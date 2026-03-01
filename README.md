@@ -18,6 +18,11 @@ That's it. You now have full access to Basecamp from your terminal.
 <details>
 <summary>Other installation methods</summary>
 
+**Arch Linux / Omarchy (AUR):**
+```bash
+yay -S basecamp-bin
+```
+
 **Scoop (Windows):**
 ```bash
 scoop bucket add basecamp https://github.com/basecamp/homebrew-tap
