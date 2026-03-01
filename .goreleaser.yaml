@@ -87,23 +87,19 @@ release:
     {{ end }}
     ### Install
 
-    **Linux (Omarchy):**
+    **macOS:**
     ```sh
-    gh release download v{{.Version}} --repo basecamp/basecamp-cli --pattern '*linux_amd64*'
-    tar xzf basecamp_{{.Version}}_linux_amd64.tar.gz
-    sudo mv basecamp /usr/local/bin/
+    brew install --cask basecamp/tap/basecamp
     basecamp auth login
     ```
 
-    **macOS (Apple Silicon):**
+    **Arch Linux / Omarchy:**
     ```sh
-    gh release download v{{.Version}} --repo basecamp/basecamp-cli --pattern '*darwin_arm64*'
-    tar xzf basecamp_{{.Version}}_darwin_arm64.tar.gz
-    sudo mv basecamp /usr/local/bin/
+    yay -S basecamp-bin
     basecamp auth login
     ```
 
-    Other platforms: download the matching archive from the assets below.
+    **Other platforms:** download the matching archive from the assets below.
 
 homebrew_casks:
   - name: basecamp
