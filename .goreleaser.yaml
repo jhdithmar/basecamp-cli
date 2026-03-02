@@ -48,10 +48,6 @@ archives:
       - README*
       - completions/*
 
-source:
-  enabled: true
-  prefix_template: "{{ .ProjectName }}-{{ .Version }}/"
-
 checksum:
   name_template: 'checksums.txt'
   algorithm: sha256
@@ -129,38 +125,4 @@ scoops:
     license: MIT
     skip_upload: auto
 
-aur_sources:
-  - name: basecamp-cli
-    homepage: "https://github.com/basecamp/basecamp-cli"
-    description: "CLI for Basecamp project management"
-    maintainers:
-      - "Basecamp <support@basecamp.com>"
-    license: "MIT"
-    private_key: "{{ .Env.AUR_KEY }}"
-    git_url: "ssh://aur@aur.archlinux.org/basecamp-cli.git"
-    provides:
-      - basecamp
-    conflicts:
-      - basecamp
-      - basecamp-bin
-    optdepends:
-      - "bash-completion: for bash shell completions"
-      - "zsh: for zsh shell completions"
-      - "fish: for fish shell completions"
-    skip_upload: auto
-    prepare: |-
-      cd "${pkgname}-${pkgver}"
-      go mod download
-    build: |-
-      cd "${pkgname}-${pkgver}"
-      go build -ldflags "-s -w -X github.com/basecamp/basecamp-cli/internal/version.Version=${pkgver}" -o basecamp ./cmd/basecamp
-      go run ./cmd/basecamp completion bash > basecamp.bash
-      go run ./cmd/basecamp completion zsh > _basecamp
-      go run ./cmd/basecamp completion fish > basecamp.fish
-    package: |-
-      cd "${pkgname}-${pkgver}"
-      install -Dm755 "./basecamp" "${pkgdir}/usr/bin/basecamp"
-      install -Dm644 "./MIT-LICENSE" "${pkgdir}/usr/share/licenses/basecamp/MIT-LICENSE"
-      install -Dm644 basecamp.bash "${pkgdir}/usr/share/bash-completion/completions/basecamp"
-      install -Dm644 _basecamp "${pkgdir}/usr/share/zsh/site-functions/_basecamp"
-      install -Dm644 basecamp.fish "${pkgdir}/usr/share/fish/vendor_completions.d/basecamp.fish"
+# AUR publishing handled by scripts/publish-aur.sh (GoReleaser enforces -bin suffix)
