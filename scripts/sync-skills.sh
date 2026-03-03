@@ -16,6 +16,7 @@ DRY_RUN="${DRY_RUN:-}"
 SKILLS_SOURCE="skills"
 TARGET_REPO="basecamp/skills"
 TARGET_BRANCH="main"
+SKILLS_SUBDIR="skills"
 
 # --- Helpers ---
 
@@ -82,7 +83,7 @@ if [[ "$DRY_RUN" == "local" ]]; then
   tmpdir=$(mktemp -d)
   trap 'rm -rf "$tmpdir"' EXIT
   echo "DRY_RUN=local: copying skills into $tmpdir"
-  copy_skills "$tmpdir"
+  copy_skills "$tmpdir/$SKILLS_SUBDIR"
   echo ""
   echo "=== Skills copied ==="
   find "$tmpdir" -type f | sort | while read -r f; do
@@ -121,7 +122,7 @@ assert_branch "$target"
 # --- Copy skills ---
 
 echo "Copying skills into target..."
-copy_skills "$target"
+copy_skills "$target/$SKILLS_SUBDIR"
 
 # --- Remove stale skills using manifest ---
 # .managed-skills lists skill names owned by this sync. Only those are
@@ -147,7 +148,7 @@ else
   # No manifest yet (first run). basecamp-cli is the source of truth, so
   # treat all */SKILL.md dirs in the target as managed. Any skill not in the
   # source set will be removed. Use DRY_RUN=remote to preview before pushing.
-  for candidate in "$target"/*/SKILL.md; do
+  for candidate in "$target/$SKILLS_SUBDIR"/*/SKILL.md; do
     [[ -f "$candidate" ]] || continue
     previously_managed_names+=("$(basename "$(dirname "$candidate")")")
   done
@@ -158,9 +159,9 @@ for previously_managed in "${previously_managed_names[@]}"; do
   for name in "${source_skill_names[@]}"; do
     [[ "$name" == "$previously_managed" ]] && found=1 && break
   done
-  if [[ "$found" -eq 0 && -d "$target/$previously_managed" ]]; then
+  if [[ "$found" -eq 0 && -d "$target/$SKILLS_SUBDIR/$previously_managed" ]]; then
     echo "Removing stale skill: $previously_managed"
-    rm -rf "${target:?}/$previously_managed"
+    rm -rf "${target:?}/$SKILLS_SUBDIR/$previously_managed"
   fi
 done
 
