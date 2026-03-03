@@ -102,21 +102,22 @@ func Default() *Config {
 // Precedence: flags > env > local > repo > global > system > defaults
 func Load(overrides FlagOverrides) (*Config, error) {
 	cfg := Default()
+	trust := LoadTrustStore(GlobalConfigDir())
 
 	// Load from file layers (system -> global -> repo -> local)
-	loadFromFile(cfg, systemConfigPath(), SourceSystem)
-	loadFromFile(cfg, globalConfigPath(), SourceGlobal)
+	loadFromFile(cfg, systemConfigPath(), SourceSystem, trust)
+	loadFromFile(cfg, globalConfigPath(), SourceGlobal, trust)
 
-	repoPath := repoConfigPath()
+	repoPath := RepoConfigPath()
 	if repoPath != "" {
-		loadFromFile(cfg, repoPath, SourceRepo)
+		loadFromFile(cfg, repoPath, SourceRepo, trust)
 	}
 
 	// Load all local configs from root to current (closer overrides)
 	// This allows nested directories to override parent directories
 	localPaths := localConfigPaths(repoPath)
 	for _, path := range localPaths {
-		loadFromFile(cfg, path, SourceLocal)
+		loadFromFile(cfg, path, SourceLocal, trust)
 	}
 
 	// Load from environment
@@ -128,7 +129,7 @@ func Load(overrides FlagOverrides) (*Config, error) {
 	return cfg, nil
 }
 
-func loadFromFile(cfg *Config, path string, source Source) {
+func loadFromFile(cfg *Config, path string, source Source, trust *TrustStore) {
 	data, err := os.ReadFile(path) //nolint:gosec // G304: Path is from trusted config locations
 	if err != nil {
 		return // File doesn't exist, skip
@@ -141,13 +142,15 @@ func loadFromFile(cfg *Config, path string, source Source) {
 	}
 
 	// Authority keys (base_url, profiles, default_profile) control where tokens
-	// are sent. Local/repo config must NOT set these — a malicious config in a
-	// cloned repo or parent directory could redirect authenticated traffic.
-	untrusted := source == SourceLocal || source == SourceRepo
+	// are sent. Local/repo config must NOT set these unless explicitly trusted
+	// via `basecamp config trust` — a malicious config in a cloned repo or
+	// parent directory could redirect authenticated traffic.
+	untrusted := (source == SourceLocal || source == SourceRepo) &&
+		(trust == nil || !trust.IsTrusted(path))
 
 	if v, ok := fileCfg["base_url"].(string); ok && v != "" {
 		if untrusted {
-			fmt.Fprintf(os.Stderr, "warning: ignoring base_url %q from %s config at %s (authority keys are not trusted from local/repo config)\n", v, source, path)
+			fmt.Fprintf(os.Stderr, "warning: ignoring base_url %q from %s config at %s\n  (authority key from local/repo config; run `basecamp config trust %s` to allow)\n", v, source, path, ShellQuote(path))
 		} else {
 			cfg.BaseURL = v
 			cfg.Sources["base_url"] = string(source)
@@ -200,7 +203,7 @@ func loadFromFile(cfg *Config, path string, source Source) {
 	}
 	if v, ok := fileCfg["default_profile"].(string); ok && v != "" {
 		if untrusted {
-			fmt.Fprintf(os.Stderr, "warning: ignoring default_profile %q from %s config at %s (authority keys are not trusted from local/repo config)\n", v, source, path)
+			fmt.Fprintf(os.Stderr, "warning: ignoring default_profile %q from %s config at %s\n  (authority key from local/repo config; run `basecamp config trust %s` to allow)\n", v, source, path, ShellQuote(path))
 		} else {
 			cfg.DefaultProfile = v
 			cfg.Sources["default_profile"] = string(source)
@@ -208,7 +211,7 @@ func loadFromFile(cfg *Config, path string, source Source) {
 	}
 	if v, ok := fileCfg["profiles"].(map[string]any); ok {
 		if untrusted {
-			fmt.Fprintf(os.Stderr, "warning: ignoring profiles from %s config at %s (authority keys are not trusted from local/repo config)\n", source, path)
+			fmt.Fprintf(os.Stderr, "warning: ignoring profiles from %s config at %s\n  (authority key from local/repo config; run `basecamp config trust %s` to allow)\n", source, path, ShellQuote(path))
 		} else {
 			if cfg.Profiles == nil {
 				cfg.Profiles = make(map[string]*ProfileConfig)
@@ -416,7 +419,9 @@ func globalConfigPath() string {
 	return filepath.Join(configDir, "basecamp", "config.json")
 }
 
-func repoConfigPath() string {
+// RepoConfigPath walks up from CWD to find .basecamp/config.json at the
+// git repo root. Returns empty string if not found or outside $HOME.
+func RepoConfigPath() string {
 	// Walk up to find .git directory, then look for .basecamp/config.json.
 	// Bounded by $HOME: only search within the home directory tree.
 	// If CWD is outside $HOME (e.g., /tmp), no repo config is trusted.
@@ -552,4 +557,11 @@ func GlobalConfigDir() string {
 // NormalizeBaseURL ensures consistent URL format (no trailing slash).
 func NormalizeBaseURL(url string) string {
 	return strings.TrimSuffix(url, "/")
+}
+
+// ShellQuote returns a POSIX single-quoted string safe for copy-paste into
+// a shell. Single quotes inside the value are escaped as '\” (end quote,
+// escaped literal quote, resume quote).
+func ShellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
