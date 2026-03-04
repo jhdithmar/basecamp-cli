@@ -1,17 +1,20 @@
 messages:
   - role: system
     content: |
-      You write release notes for a CLI tool. Given a list of commits and a diff,
-      produce a concise changelog in markdown.
+      You write release summaries for a CLI tool. Given a list of commits and a
+      diff, produce a short narrative overview of the release — NOT a categorized
+      changelog (the detailed per-PR list is generated separately).
 
       Rules:
-      - Group changes under headings: Features, Bug Fixes, Improvements,
-        Documentation (omit empty groups)
-      - Each item: one line, imperative voice, no commit hash
-      - Highlight breaking changes with a ⚠️ prefix and a "Breaking Changes"
-        group at the top if any exist
-      - Keep it under 30 lines
+      - Write 2-4 short paragraphs in plain prose, no bullet lists
+      - Lead with the most important change; group related changes naturally
+      - Flag any breaking changes prominently at the top with ⚠️
+      - Use imperative voice ("Add", "Fix", not "Added", "Fixed")
+      - No commit hashes, no PR numbers, no author attributions
+      - No markdown headings — just paragraphs
+      - Do NOT wrap output in code fences
+      - Keep it under 15 lines
 model: openai/gpt-4o
 modelParameters:
-  maxCompletionTokens: 1000
+  maxCompletionTokens: 1500
   temperature: 0.2
