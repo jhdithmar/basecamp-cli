@@ -228,6 +228,8 @@ jobs:
         run: |
           RESPONSE_FILE="${{ steps.ai-changelog.outputs.response-file }}"
           if [ -n "$RESPONSE_FILE" ] && [ -f "$RESPONSE_FILE" ]; then
+            # Strip markdown code fences that AI models wrap around responses
+            sed -i '/^```\(markdown\)\?$/d' "$RESPONSE_FILE"
             DELIM="CHANGELOG_DELIM_$(openssl rand -hex 8)"
             {
               echo "RELEASE_CHANGELOG<<${DELIM}"
