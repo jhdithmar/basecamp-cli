@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
 	"github.com/basecamp/basecamp-cli/internal/appctx"
 	"github.com/basecamp/basecamp-cli/internal/auth"
+	"github.com/basecamp/basecamp-cli/internal/harness"
 	"github.com/basecamp/basecamp-cli/internal/output"
 	"github.com/basecamp/basecamp-cli/internal/tui"
 	"github.com/basecamp/basecamp-cli/internal/tui/resolve"
@@ -29,13 +31,77 @@ type WizardResult struct {
 
 // NewSetupCmd creates the setup command (explicit wizard invocation).
 func NewSetupCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "setup",
 		Short: "Interactive first-time setup",
-		Long:  "Walk through authentication, account selection, and project configuration.",
+		Long:  "Walk through authentication, account selection, project configuration, and Claude Code integration.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
 			return runWizard(cmd, app)
+		},
+	}
+	cmd.AddCommand(newSetupClaudeCmd())
+	return cmd
+}
+
+// newSetupClaudeCmd creates the `setup claude` subcommand for focused plugin setup.
+func newSetupClaudeCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "claude",
+		Short: "Install the Basecamp plugin for Claude Code",
+		Long:  "Set up the Claude Code integration so Claude can access Basecamp.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			app := appctx.FromContext(cmd.Context())
+			if app == nil {
+				return fmt.Errorf("app not initialized")
+			}
+
+			detected := harness.DetectClaude()
+
+			if app.IsInteractive() {
+				// Interactive mode: full wizard flow with prompts
+				styles := tui.NewStylesWithTheme(tui.ResolveTheme())
+				w := cmd.OutOrStdout()
+
+				if !app.Auth.IsAuthenticated() && os.Getenv("BASECAMP_TOKEN") == "" {
+					fmt.Fprintln(w, styles.Warning.Render("  Not authenticated. The plugin will install, but Claude won't have Basecamp context until you log in."))
+					fmt.Fprintln(w, styles.Muted.Render("  Run: basecamp login"))
+					fmt.Fprintln(w)
+				}
+
+				if err := wizardClaude(cmd, styles); err != nil {
+					return err
+				}
+
+				fmt.Fprintln(w, styles.Muted.Render("  Start a new Claude Code session to use Basecamp commands."))
+			} else {
+				// Non-interactive mode: attempt install without prompts
+				installClaudeNonInteractive(cmd)
+			}
+
+			// Build structured result (re-check after potential install)
+			installed := false
+			if detected || harness.FindClaudeBinary() != "" {
+				detected = true // binary exists even if ~/.claude doesn't
+				installed = harness.CheckClaudePlugin().Status == "pass"
+			}
+
+			summary := "Claude Code plugin installed"
+			if !detected {
+				summary = "Claude Code not detected"
+			} else if !installed {
+				summary = "Claude Code plugin not installed"
+			}
+
+			return app.OK(map[string]any{
+				"plugin_installed": installed,
+				"claude_detected":  detected,
+			},
+				output.WithSummary(summary),
+				output.WithBreadcrumbs(
+					output.Breadcrumb{Action: "doctor", Cmd: "basecamp doctor", Description: "Check CLI health"},
+				),
+			)
 		},
 	}
 }
@@ -81,15 +147,140 @@ func runWizard(cmd *cobra.Command, app *appctx.App) error {
 	}
 
 	// Step 5: Save config
-	result.ConfigScope = wizardSaveConfig(styles, accountID, projectID)
+	configScope := wizardSaveConfig(styles, accountID, projectID)
+	result.ConfigScope = configScope
 
-	// Step 6: Summary with next steps
+	// Step 6: Claude Code integration
+	if err := wizardClaude(cmd, styles); err != nil {
+		return err
+	}
+
+	// Persist onboarded flag (always global so it applies everywhere)
+	if err := resolve.PersistValue("onboarded", "true", "global"); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to persist onboarding flag: %v\n", err)
+	}
+
+	// Step 7: Summary with next steps
 	showSuccess(styles, result)
 
 	return app.OK(result,
 		output.WithSummary(wizardSummaryLine(result)),
 		output.WithBreadcrumbs(wizardBreadcrumbs(result)...),
 	)
+}
+
+// installClaudeNonInteractive attempts plugin install without prompts (for --json/--agent mode).
+func installClaudeNonInteractive(cmd *cobra.Command) {
+	claudePath := harness.FindClaudeBinary()
+	if claudePath == "" {
+		return
+	}
+
+	// Check if already installed
+	if harness.DetectClaude() {
+		if check := harness.CheckClaudePlugin(); check.Status == "pass" {
+			return
+		}
+	}
+
+	ctx := cmd.Context()
+	w := cmd.ErrOrStderr()
+
+	// Best-effort marketplace registration
+	marketplaceCmd := exec.CommandContext(ctx, claudePath, "plugin", "marketplace", "add", harness.ClaudeMarketplaceSource) //nolint:gosec // G204: claudePath from exec.LookPath
+	marketplaceCmd.Stderr = w
+	_ = marketplaceCmd.Run()
+
+	// Install the plugin
+	installCmd := exec.CommandContext(ctx, claudePath, "plugin", "install", harness.ClaudePluginName) //nolint:gosec // G204: claudePath from exec.LookPath
+	installCmd.Stderr = w
+	_ = installCmd.Run()
+}
+
+// wizardClaude offers to install the Basecamp plugin for Claude Code.
+// Skips silently if Claude Code is not installed.
+func wizardClaude(cmd *cobra.Command, styles *tui.Styles) error {
+	if !harness.DetectClaude() && harness.FindClaudeBinary() == "" {
+		return nil
+	}
+
+	w := cmd.OutOrStdout()
+
+	// Already installed
+	check := harness.CheckClaudePlugin()
+	if check.Status == "pass" {
+		fmt.Fprintln(w, styles.RenderStatus(true, "Claude Code plugin installed"))
+		fmt.Fprintln(w)
+		return nil
+	}
+
+	fmt.Fprintln(w, styles.Heading.Render("  Claude Code Integration"))
+	fmt.Fprintln(w)
+
+	claudePath := harness.FindClaudeBinary()
+	if claudePath == "" {
+		fmt.Fprintln(w, styles.Muted.Render("  Claude Code detected but binary not found in PATH."))
+		fmt.Fprintln(w, styles.Muted.Render("  Install the plugin manually:"))
+		line1, line2 := claudeManualInstallHint(styles)
+		fmt.Fprintln(w, line1)
+		fmt.Fprintln(w, line2)
+		fmt.Fprintln(w)
+		return nil
+	}
+
+	install, confirmErr := tui.Confirm("  Install the Basecamp plugin for Claude Code?", true)
+	if confirmErr != nil || !install {
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, styles.Muted.Render("  You can install it later:"))
+		line1, line2 := claudeManualInstallHint(styles)
+		fmt.Fprintln(w, line1)
+		fmt.Fprintln(w, line2)
+		fmt.Fprintln(w)
+		return nil //nolint:nilerr // Treat confirm error as skip (user canceled)
+	}
+
+	fmt.Fprintln(w)
+
+	// Step 1: Register the marketplace (best-effort — may already be registered)
+	ctx := cmd.Context()
+	marketplaceCmd := exec.CommandContext(ctx, claudePath, "plugin", "marketplace", "add", harness.ClaudeMarketplaceSource) //nolint:gosec // G204: claudePath from exec.LookPath
+	marketplaceCmd.Stdout = w
+	marketplaceCmd.Stderr = cmd.ErrOrStderr()
+	if err := marketplaceCmd.Run(); err != nil {
+		fmt.Fprintln(w, styles.Warning.Render(fmt.Sprintf("  Marketplace registration failed: %s", err)))
+	}
+
+	// Step 2: Install the plugin (attempt regardless of marketplace result)
+	installCmd := exec.CommandContext(ctx, claudePath, "plugin", "install", harness.ClaudePluginName) //nolint:gosec // G204: claudePath from exec.LookPath
+	installCmd.Stdout = w
+	installCmd.Stderr = cmd.ErrOrStderr()
+	if err := installCmd.Run(); err != nil {
+		fmt.Fprintln(w, styles.Warning.Render(fmt.Sprintf("  Plugin install failed: %s", err)))
+		fmt.Fprintln(w, styles.Muted.Render("  Try manually:"))
+		line1, line2 := claudeManualInstallHint(styles)
+		fmt.Fprintln(w, line1)
+		fmt.Fprintln(w, line2)
+		fmt.Fprintln(w)
+		return nil
+	}
+
+	// Verify
+	verify := harness.CheckClaudePlugin()
+	if verify.Status == "pass" {
+		fmt.Fprintln(w, styles.RenderStatus(true, "Claude Code plugin installed"))
+	} else {
+		fmt.Fprintln(w, styles.RenderStatus(false, "Claude Code plugin may not have installed correctly"))
+		fmt.Fprintln(w, styles.Muted.Render("  Run: basecamp doctor"))
+	}
+	fmt.Fprintln(w)
+
+	return nil
+}
+
+// claudeManualInstallHint returns the two-line manual install instructions.
+func claudeManualInstallHint(styles *tui.Styles) (string, string) {
+	return styles.Bold.Render(fmt.Sprintf("    claude plugin marketplace add %s", harness.ClaudeMarketplaceSource)),
+		styles.Bold.Render(fmt.Sprintf("    claude plugin install %s", harness.ClaudePluginName))
 }
 
 // showWelcome displays the welcome screen.
@@ -267,6 +458,10 @@ func showSuccess(styles *tui.Styles, result WizardResult) {
 	if result.ConfigScope != "" {
 		fmt.Println(styles.RenderStatus(true, fmt.Sprintf("Config saved (%s)", result.ConfigScope)))
 	}
+	if harness.DetectClaude() {
+		check := harness.CheckClaudePlugin()
+		fmt.Println(styles.RenderStatus(check.Status == "pass", "Claude Code plugin"))
+	}
 	fmt.Println()
 
 	// Example commands
@@ -344,8 +539,11 @@ func wizardBreadcrumbs(result WizardResult) []output.Breadcrumb {
 }
 
 // isFirstRun returns true if this appears to be a first-time run.
-// Checks: no stored credentials, no BASECAMP_TOKEN env, interactive TTY.
+// Checks: onboarded flag, stored credentials, BASECAMP_TOKEN env, interactive TTY.
 func isFirstRun(app *appctx.App) bool {
+	if app.Config.Onboarded != nil && *app.Config.Onboarded {
+		return false
+	}
 	if app.Auth.IsAuthenticated() {
 		return false
 	}
