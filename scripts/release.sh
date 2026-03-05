@@ -71,12 +71,20 @@ fi
 info "Updating Nix flake"
 if [[ "${DRY_RUN}" == "true" || "${DRY_RUN}" == "1" ]]; then
   echo "  (skipped — dry run)"
-elif scripts/update-nix-flake.sh "${VERSION}"; then
-  git add nix/package.nix
-  git commit -m "Update nix flake for v${VERSION}"
-  git push origin main --quiet
-  LOCAL=$(git rev-parse HEAD)
-  info "Pushed nix flake update"
+else
+  NIX_RC=0
+  scripts/update-nix-flake.sh "${VERSION}" || NIX_RC=$?
+  if [[ "$NIX_RC" -eq 0 ]]; then
+    git add nix/package.nix
+    git commit -m "Update nix flake for v${VERSION}"
+    git push origin main --quiet
+    LOCAL=$(git rev-parse HEAD)
+    info "Pushed nix flake update"
+  elif [[ "$NIX_RC" -eq 2 ]]; then
+    echo "  nix flake: no changes needed"
+  else
+    die "scripts/update-nix-flake.sh failed (exit $NIX_RC)"
+  fi
 fi
 
 # --- Run pre-flight checks ---

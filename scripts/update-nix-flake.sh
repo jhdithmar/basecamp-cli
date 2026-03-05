@@ -54,7 +54,7 @@ if [[ "$NEED_HASH" == "true" ]]; then
       nix --extra-experimental-features "nix-command flakes" build --no-link 2>&1 || true
     ' 2>&1)
 
-    NEW_HASH=$(echo "$BUILD_OUTPUT" | grep "got:" | awk '{print $2}')
+    NEW_HASH=$(echo "$BUILD_OUTPUT" | grep "got:" | awk '{print $2}' || true)
 
     if [[ -n "$NEW_HASH" ]]; then
       CURRENT_HASH=$(sed -n 's/.*vendorHash = "\([^"]*\)".*/\1/p' "$NIX_PKG" | head -1)
