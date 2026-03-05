@@ -1,60 +1,31 @@
 package output
 
-import (
-	"errors"
-	"fmt"
-)
+import clioutput "github.com/basecamp/cli/output"
 
 // Error is a structured error with code, message, and optional hint.
-type Error struct {
-	Code       string
-	Message    string
-	Hint       string
-	HTTPStatus int
-	Retryable  bool
-	Cause      error
-}
+// Type alias — zero-cost, full compatibility with errors.As.
+type Error = clioutput.Error
 
-func (e *Error) Error() string {
-	if e.Hint != "" {
-		return fmt.Sprintf("%s: %s", e.Message, e.Hint)
-	}
-	return e.Message
-}
+// Generic error constructors (re-exported from shared module).
 
-func (e *Error) Unwrap() error {
-	return e.Cause
-}
-
-// ExitCode returns the appropriate exit code for this error.
-func (e *Error) ExitCode() int {
-	return ExitCodeFor(e.Code)
-}
-
-// Error constructors for common cases.
-
-func ErrUsage(msg string) *Error {
-	return &Error{Code: CodeUsage, Message: msg}
-}
-
-func ErrUsageHint(msg, hint string) *Error {
-	return &Error{Code: CodeUsage, Message: msg, Hint: hint}
-}
-
+func ErrUsage(msg string) *Error           { return clioutput.ErrUsage(msg) }
+func ErrUsageHint(msg, hint string) *Error { return clioutput.ErrUsageHint(msg, hint) }
 func ErrNotFound(resource, identifier string) *Error {
-	return &Error{
-		Code:    CodeNotFound,
-		Message: fmt.Sprintf("%s not found: %s", resource, identifier),
-	}
+	return clioutput.ErrNotFound(resource, identifier)
 }
-
 func ErrNotFoundHint(resource, identifier, hint string) *Error {
-	return &Error{
-		Code:    CodeNotFound,
-		Message: fmt.Sprintf("%s not found: %s", resource, identifier),
-		Hint:    hint,
-	}
+	return clioutput.ErrNotFoundHint(resource, identifier, hint)
 }
+func ErrForbidden(msg string) *Error       { return clioutput.ErrForbidden(msg) }
+func ErrRateLimit(retryAfter int) *Error   { return clioutput.ErrRateLimit(retryAfter) }
+func ErrNetwork(cause error) *Error        { return clioutput.ErrNetwork(cause) }
+func ErrAPI(status int, msg string) *Error { return clioutput.ErrAPI(status, msg) }
+func ErrAmbiguous(resource string, matches []string) *Error {
+	return clioutput.ErrAmbiguous(resource, matches)
+}
+func AsError(err error) *Error { return clioutput.AsError(err) }
+
+// App-specific error constructors with basecamp-cli hints.
 
 func ErrAuth(msg string) *Error {
 	return &Error{
@@ -64,76 +35,11 @@ func ErrAuth(msg string) *Error {
 	}
 }
 
-func ErrForbidden(msg string) *Error {
-	return &Error{
-		Code:       CodeForbidden,
-		Message:    msg,
-		HTTPStatus: 403,
-	}
-}
-
 func ErrForbiddenScope() *Error {
 	return &Error{
 		Code:       CodeForbidden,
 		Message:    "Access denied: insufficient scope",
 		Hint:       "Run: basecamp auth login --scope full",
 		HTTPStatus: 403,
-	}
-}
-
-func ErrRateLimit(retryAfter int) *Error {
-	hint := "Try again later"
-	if retryAfter > 0 {
-		hint = fmt.Sprintf("Try again in %d seconds", retryAfter)
-	}
-	return &Error{
-		Code:       CodeRateLimit,
-		Message:    "Rate limited",
-		Hint:       hint,
-		HTTPStatus: 429,
-		Retryable:  true,
-	}
-}
-
-func ErrNetwork(cause error) *Error {
-	return &Error{
-		Code:      CodeNetwork,
-		Message:   "Network error",
-		Hint:      cause.Error(),
-		Retryable: true,
-		Cause:     cause,
-	}
-}
-
-func ErrAPI(status int, msg string) *Error {
-	return &Error{
-		Code:       CodeAPI,
-		Message:    msg,
-		HTTPStatus: status,
-	}
-}
-
-func ErrAmbiguous(resource string, matches []string) *Error {
-	hint := "Be more specific"
-	if len(matches) > 0 && len(matches) <= 5 {
-		hint = fmt.Sprintf("Did you mean: %v", matches)
-	}
-	return &Error{
-		Code:    CodeAmbiguous,
-		Message: fmt.Sprintf("Ambiguous %s", resource),
-		Hint:    hint,
-	}
-}
-
-// AsError attempts to convert an error to an *Error.
-func AsError(err error) *Error {
-	var e *Error
-	if errors.As(err, &e) {
-		return e
-	}
-	return &Error{
-		Code:    CodeAPI,
-		Message: err.Error(),
-		Cause:   err,
 	}
 }
