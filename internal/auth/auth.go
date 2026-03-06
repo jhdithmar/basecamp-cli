@@ -757,24 +757,37 @@ func (m *Manager) GetOAuthType() string {
 	return creds.OAuthType
 }
 
-// GetUserID returns the stored user ID for the current credential key.
-func (m *Manager) GetUserID() string {
+// GetUserEmail returns the stored user email for the current credential key.
+func (m *Manager) GetUserEmail() string {
 	credKey := m.credentialKey()
 	creds, err := m.store.Load(credKey)
 	if err != nil {
 		return ""
 	}
-	return creds.UserID
+	return creds.UserEmail
 }
 
-// SetUserID stores the user ID for the current credential key.
-func (m *Manager) SetUserID(userID string) error {
+// SetUserEmail stores the user email for the current credential key
+// without modifying the stored user ID.
+func (m *Manager) SetUserEmail(email string) error {
+	credKey := m.credentialKey()
+	creds, err := m.store.Load(credKey)
+	if err != nil {
+		return err
+	}
+	creds.UserEmail = email
+	return m.store.Save(credKey, creds)
+}
+
+// SetUserIdentity stores the user ID and email for the current credential key.
+func (m *Manager) SetUserIdentity(userID, email string) error {
 	credKey := m.credentialKey()
 	creds, err := m.store.Load(credKey)
 	if err != nil {
 		return err
 	}
 	creds.UserID = userID
+	creds.UserEmail = email
 	return m.store.Save(credKey, creds)
 }
 
@@ -787,4 +800,10 @@ func (m *Manager) CredentialKey() string {
 // GetStore returns the credential store.
 func (m *Manager) GetStore() *Store {
 	return m.store
+}
+
+// SetStore replaces the credential store. Used in tests to inject
+// a file-backed store rooted in a temp directory.
+func (m *Manager) SetStore(s *Store) {
+	m.store = s
 }

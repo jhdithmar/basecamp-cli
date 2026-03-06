@@ -231,7 +231,7 @@ func TestIsAuthenticatedWithStoredCreds(t *testing.T) {
 	assert.True(t, manager.IsAuthenticated(), "Should be authenticated with stored credentials")
 }
 
-func TestGetUserID(t *testing.T) {
+func TestSetUserEmail(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	cfg := &config.Config{
@@ -240,19 +240,26 @@ func TestGetUserID(t *testing.T) {
 	manager := NewManager(cfg, http.DefaultClient)
 	manager.store = newTestStore(t, tmpDir)
 
-	// Save credentials with user ID
+	// Save initial credentials with a user ID
 	creds := &Credentials{
 		AccessToken: "test-token",
 		ExpiresAt:   time.Now().Unix() + 3600,
-		UserID:      "12345",
+		UserID:      "original-id",
 	}
-	manager.store.Save("https://3.basecampapi.com", creds)
+	require.NoError(t, manager.store.Save("https://3.basecampapi.com", creds))
 
-	userID := manager.GetUserID()
-	assert.Equal(t, "12345", userID)
+	// Set email only
+	err := manager.SetUserEmail("test@example.com")
+	require.NoError(t, err)
+
+	// Verify email was saved and UserID was not modified
+	loaded, err := manager.store.Load("https://3.basecampapi.com")
+	require.NoError(t, err)
+	assert.Equal(t, "test@example.com", loaded.UserEmail)
+	assert.Equal(t, "original-id", loaded.UserID)
 }
 
-func TestSetUserID(t *testing.T) {
+func TestSetUserIdentity(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	cfg := &config.Config{
@@ -266,16 +273,17 @@ func TestSetUserID(t *testing.T) {
 		AccessToken: "test-token",
 		ExpiresAt:   time.Now().Unix() + 3600,
 	}
-	manager.store.Save("https://3.basecampapi.com", creds)
+	require.NoError(t, manager.store.Save("https://3.basecampapi.com", creds))
 
-	// Set user ID
-	err := manager.SetUserID("67890")
-	require.NoError(t, err, "SetUserID failed")
+	// Set user identity
+	err := manager.SetUserIdentity("67890", "test@example.com")
+	require.NoError(t, err)
 
-	// Verify it was saved
+	// Verify both were saved
 	loaded, err := manager.store.Load("https://3.basecampapi.com")
-	require.NoError(t, err, "Load failed")
+	require.NoError(t, err)
 	assert.Equal(t, "67890", loaded.UserID)
+	assert.Equal(t, "test@example.com", loaded.UserEmail)
 }
 
 func TestLogout(t *testing.T) {
