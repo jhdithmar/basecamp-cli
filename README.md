@@ -9,7 +9,7 @@
 ## Quick Start
 
 ```bash
-brew install --cask basecamp/tap/basecamp
+curl -fsSL https://basecamp.com/install-cli | bash
 basecamp auth login
 ```
 
@@ -17,6 +17,12 @@ That's it. You now have full access to Basecamp from your terminal.
 
 <details>
 <summary>Other installation methods</summary>
+
+**Brew / macOS**
+
+```
+brew install --cask basecamp/tap/basecamp
+```
 
 **Arch Linux / Omarchy (AUR):**
 ```bash
