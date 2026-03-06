@@ -298,7 +298,20 @@ func showWelcome(styles *tui.Styles) error {
 // wizardAuth handles the authentication flow with scope selection.
 func wizardAuth(cmd *cobra.Command, app *appctx.App, styles *tui.Styles) error {
 	if app.Auth.IsAuthenticated() {
-		fmt.Println(styles.Success.Render("  Already authenticated."))
+		info, err := app.SDK.Authorization().GetInfo(cmd.Context(), nil)
+		if err == nil {
+			name := fmt.Sprintf("%s %s", info.Identity.FirstName, info.Identity.LastName)
+			fmt.Println(styles.Success.Render(fmt.Sprintf("  Logged in as %s (%s)", name, info.Identity.EmailAddress)))
+			if len(info.Accounts) > 0 {
+				var lines string
+				for _, acct := range info.Accounts {
+					lines += fmt.Sprintf("    • %s\n", acct.Name)
+				}
+				fmt.Print(styles.Muted.Render(lines))
+			}
+		} else {
+			fmt.Println(styles.Success.Render("  Already authenticated."))
+		}
 		fmt.Println()
 		return nil
 	}
