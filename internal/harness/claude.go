@@ -5,7 +5,27 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
+
+func init() {
+	RegisterAgent(AgentInfo{
+		Name:   "Claude Code",
+		ID:     "claude",
+		Detect: DetectClaude,
+		Checks: func() []*StatusCheck {
+			checks := []*StatusCheck{CheckClaudePlugin()}
+			// Only check the skill link if ~/.claude exists (i.e. Claude is dir-detected)
+			home, err := os.UserHomeDir()
+			if err == nil {
+				if info, statErr := os.Stat(filepath.Join(home, ".claude")); statErr == nil && info.IsDir() {
+					checks = append(checks, CheckClaudeSkillLink())
+				}
+			}
+			return checks
+		},
+	})
+}
 
 // ClaudeMarketplaceSource is the marketplace repository for the Basecamp plugin.
 // Migrating from basecamp/basecamp-cli → basecamp/claude-plugins.
@@ -14,15 +34,18 @@ const ClaudeMarketplaceSource = "basecamp/claude-plugins"
 // ClaudePluginName is the plugin identifier to install.
 const ClaudePluginName = "basecamp"
 
-// DetectClaude returns true if Claude Code is installed (~/.claude/ exists).
+// DetectClaude returns true if Claude Code is installed.
+// Checks ~/.claude/ directory first, then falls back to binary on PATH.
 func DetectClaude() bool {
 	home, err := os.UserHomeDir()
-	if err != nil {
-		return false
+	if err == nil {
+		home = filepath.Clean(home)
+		info, statErr := os.Stat(filepath.Join(home, ".claude"))
+		if statErr == nil && info.IsDir() {
+			return true
+		}
 	}
-	home = filepath.Clean(home)
-	info, err := os.Stat(filepath.Join(home, ".claude"))
-	return err == nil && info.IsDir()
+	return FindClaudeBinary() != ""
 }
 
 // IsPluginNeeded returns true if Claude Code is installed but the plugin is not.
@@ -99,6 +122,42 @@ func CheckClaudePlugin() *StatusCheck {
 	}
 }
 
+// CheckClaudeSkillLink checks whether ~/.claude/skills/basecamp contains a valid SKILL.md.
+func CheckClaudeSkillLink() *StatusCheck {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return &StatusCheck{
+			Name:    "Claude Code Skill",
+			Status:  "warn",
+			Message: "Cannot determine home directory",
+		}
+	}
+
+	skillPath := filepath.Join(filepath.Clean(home), ".claude", "skills", "basecamp", "SKILL.md")
+	if _, err := os.Stat(skillPath); err != nil {
+		if os.IsNotExist(err) {
+			return &StatusCheck{
+				Name:    "Claude Code Skill",
+				Status:  "fail",
+				Message: "Skill not linked",
+				Hint:    "Run: basecamp setup claude",
+			}
+		}
+		return &StatusCheck{
+			Name:    "Claude Code Skill",
+			Status:  "warn",
+			Message: "Cannot check skill link",
+			Hint:    "Unable to stat " + skillPath,
+		}
+	}
+
+	return &StatusCheck{
+		Name:    "Claude Code Skill",
+		Status:  "pass",
+		Message: "Linked",
+	}
+}
+
 // pluginInstalled checks if "basecamp" appears as an installed plugin.
 // Handles multiple possible JSON schemas without panicking.
 func pluginInstalled(data []byte) bool {
@@ -113,11 +172,23 @@ func pluginInstalled(data []byte) bool {
 		return false
 	}
 
-	// Try as map (key = plugin identifier)
+	// Try as map (key = plugin identifier, or v2 envelope with "plugins" key)
 	var pluginMap map[string]any
 	if err := json.Unmarshal(data, &pluginMap); err == nil {
+		// v2 format: {"version": 2, "plugins": {"basecamp@marketplace": [...]}}
+		if inner, ok := pluginMap["plugins"]; ok {
+			if innerMap, ok := inner.(map[string]any); ok {
+				for key := range innerMap {
+					if key == "basecamp" || matchesPluginKey(key) {
+						return true
+					}
+				}
+				return false
+			}
+		}
+		// v1 flat map: {"basecamp@basecamp": {...}}
 		for key := range pluginMap {
-			if key == "basecamp" || key == "basecamp@basecamp" {
+			if key == "basecamp" || matchesPluginKey(key) {
 				return true
 			}
 		}
@@ -132,7 +203,7 @@ func matchesBasecamp(p map[string]any) bool {
 	for _, field := range []string{"name", "package", "id"} {
 		if v, ok := p[field]; ok {
 			if s, ok := v.(string); ok {
-				if s == "basecamp" || s == "basecamp@basecamp" {
+				if matchesPluginKey(s) {
 					return true
 				}
 			}
@@ -141,10 +212,16 @@ func matchesBasecamp(p map[string]any) bool {
 	return false
 }
 
+// matchesPluginKey returns true if the key identifies the basecamp plugin
+// (e.g. "basecamp@basecamp", "basecamp@37signals").
+func matchesPluginKey(key string) bool {
+	return key == "basecamp" || strings.HasPrefix(key, "basecamp@")
+}
+
 func jsonContainsBasecamp(data []byte) bool {
 	// Fallback: raw string search for the plugin identifier
 	s := string(data)
-	return len(s) > 0 && (contains(s, `"basecamp@basecamp"`) || contains(s, `"basecamp"`))
+	return len(s) > 0 && (contains(s, `"basecamp"`) || contains(s, `"basecamp@`))
 }
 
 func contains(s, substr string) bool {

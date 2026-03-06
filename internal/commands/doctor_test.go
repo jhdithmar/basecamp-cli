@@ -16,6 +16,7 @@ import (
 	"github.com/basecamp/basecamp-cli/internal/appctx"
 	"github.com/basecamp/basecamp-cli/internal/auth"
 	"github.com/basecamp/basecamp-cli/internal/config"
+	"github.com/basecamp/basecamp-cli/internal/harness"
 	"github.com/basecamp/basecamp-cli/internal/names"
 	"github.com/basecamp/basecamp-cli/internal/output"
 	"github.com/basecamp/basecamp-cli/internal/version"
@@ -513,14 +514,55 @@ func TestCheckLegacyInstall_NilWhenAlreadyMigrated(t *testing.T) {
 }
 
 func TestCheckClaudeIntegration(t *testing.T) {
-	// checkClaudeIntegration calls harness.CheckClaudePlugin which reads
-	// ~/.claude/plugins/installed_plugins.json. In test environments there's
-	// no ~/.claude directory, so the plugin check should return "fail".
-	checks := checkClaudeIntegration()
+	// Claude registers via init() in the harness package. Its Checks function
+	// calls harness.CheckClaudePlugin which reads the plugin file.
+	agent := harness.FindAgent("claude")
+	require.NotNil(t, agent, "claude agent should be registered")
+	require.NotNil(t, agent.Checks)
+
+	checks := agent.Checks()
 	require.NotEmpty(t, checks, "should return at least one check")
 	assert.Equal(t, "Claude Code Plugin", checks[0].Name)
 	// Status depends on environment — in CI there's no ~/.claude so it'll be "fail"
 	assert.Contains(t, []string{"pass", "fail", "warn"}, checks[0].Status)
+}
+
+func TestCheckClaudeIntegrationIncludesSkillLink(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PATH", home) // no claude binary
+
+	// Create ~/.claude so the skill link check is included
+	require.NoError(t, os.MkdirAll(filepath.Join(home, ".claude"), 0o755))
+
+	agent := harness.FindAgent("claude")
+	require.NotNil(t, agent)
+
+	checks := agent.Checks()
+	require.True(t, len(checks) >= 2, "expected at least plugin + skill checks, got %d", len(checks))
+
+	// Find the skill check
+	var skillCheck *harness.StatusCheck
+	for _, c := range checks {
+		if c.Name == "Claude Code Skill" {
+			skillCheck = c
+			break
+		}
+	}
+	require.NotNil(t, skillCheck, "expected Claude Code Skill check")
+	assert.Equal(t, "fail", skillCheck.Status, "skill link should fail when not present")
+
+	// Now create the skill link and verify it passes
+	skillDir := filepath.Join(home, ".claude", "skills", "basecamp")
+	require.NoError(t, os.MkdirAll(skillDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("test"), 0o644))
+
+	checks = agent.Checks()
+	for _, c := range checks {
+		if c.Name == "Claude Code Skill" {
+			assert.Equal(t, "pass", c.Status, "skill link should pass when present")
+		}
+	}
 }
 
 func TestCheckLegacyInstall_SkipsKeyringWhenNoKeyring(t *testing.T) {
