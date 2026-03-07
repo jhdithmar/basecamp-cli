@@ -9,6 +9,7 @@ import (
 	"github.com/basecamp/basecamp-cli/internal/appctx"
 	"github.com/basecamp/basecamp-cli/internal/harness"
 	"github.com/basecamp/basecamp-cli/internal/output"
+	"github.com/basecamp/basecamp-cli/internal/tui"
 	"github.com/basecamp/basecamp-cli/internal/version"
 )
 
@@ -64,6 +65,26 @@ func RunQuickStartDefault(cmd *cobra.Command, args []string) error {
 
 func runQuickStart(cmd *cobra.Command, args []string) error {
 	app := appctx.FromContext(cmd.Context())
+
+	// Show animated wordmark on interactive TTY (not JSON/agent/piped/config-driven machine output)
+	var waitAnim func()
+	if app != nil && app.IsInteractive() && !app.IsMachineOutput() {
+		styles := tui.NewStylesWithTheme(tui.ResolveTheme(tui.DetectDark()))
+		dest := cmd.OutOrStdout()
+		aw, wait := tui.AnimateWordmarkAsync(dest, styles.Theme())
+		fmt.Fprintln(aw)
+		waitAnim = wait
+		// Only reroute output when animation started (aw is an AnimWriter).
+		// When AnimateWordmarkAsync falls back to static (non-TTY dest),
+		// it returns the original writer — leave app.Output alone so its
+		// format resolution stays tied to the real destination.
+		if aw != dest {
+			app.Output = output.New(output.Options{
+				Format: app.Output.EffectiveFormat(),
+				Writer: aw,
+			})
+		}
+	}
 
 	// Determine auth status
 	authInfo := AuthInfo{Status: "unauthenticated"}
@@ -146,8 +167,14 @@ func runQuickStart(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	return app.OK(json.RawMessage(data),
+	err = app.OK(json.RawMessage(data),
 		output.WithSummary(summary),
 		output.WithBreadcrumbs(breadcrumbs...),
 	)
+
+	if waitAnim != nil {
+		waitAnim()
+	}
+
+	return err
 }
