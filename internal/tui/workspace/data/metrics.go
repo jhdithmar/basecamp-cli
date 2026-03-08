@@ -5,22 +5,27 @@ import (
 	"time"
 )
 
-// PoolEventType classifies pool fetch events.
+// PoolEventType classifies pool lifecycle events.
 type PoolEventType int
 
 const (
 	FetchStart PoolEventType = iota
 	FetchComplete
 	FetchError
+	CacheHit
+	CacheMiss
+	CacheSeeded
+	PoolInvalidated
 )
 
-// PoolEvent records a single pool fetch event.
+// PoolEvent records a single pool lifecycle event.
 type PoolEvent struct {
 	Timestamp time.Time
 	PoolKey   string
 	EventType PoolEventType
 	Duration  time.Duration
 	DataSize  int
+	Detail    string // optional context (error message, etc.)
 }
 
 // PoolStats holds aggregate statistics for a single pool.
@@ -49,15 +54,17 @@ type MetricsSummary struct {
 
 // PoolStatus is a live status snapshot from a registered pool.
 type PoolStatus struct {
-	Key          string
-	State        SnapshotState
-	FetchedAt    time.Time
-	PollInterval time.Duration
-	HitCount     int
-	MissCount    int
-	FetchCount   int
-	ErrorCount   int
-	AvgLatency   time.Duration
+	Key             string
+	State           SnapshotState
+	Fetching        bool
+	FetchedAt       time.Time
+	CachedFetchedAt time.Time // real FetchedAt from disk cache (zero after first live fetch)
+	PollInterval    time.Duration
+	HitCount        int
+	MissCount       int
+	FetchCount      int
+	ErrorCount      int
+	AvgLatency      time.Duration
 }
 
 // PoolMetrics collects pool fetch telemetry for status bar display.
@@ -203,13 +210,29 @@ func (m *PoolMetrics) PoolStatsList() []PoolStatus {
 	statuses := make([]PoolStatus, 0, len(reporters))
 	for _, r := range reporters {
 		ps := r()
-		if ps.FetchedAt.IsZero() {
-			continue // registered but never fetched
+		if ps.FetchedAt.IsZero() && ps.State == StateEmpty && !ps.Fetching {
+			continue // registered but never fetched or attempted
 		}
 		statuses = append(statuses, ps)
 	}
 	sortPoolStatuses(statuses)
 	return statuses
+}
+
+// RecentEvents returns a copy of the last n events from the ring buffer.
+func (m *PoolMetrics) RecentEvents(n int) []PoolEvent {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if n <= 0 || len(m.events) == 0 {
+		return nil
+	}
+	start := len(m.events) - n
+	if start < 0 {
+		start = 0
+	}
+	out := make([]PoolEvent, len(m.events)-start)
+	copy(out, m.events[start:])
+	return out
 }
 
 // sortPoolStatuses sorts by Key for stable table ordering.
