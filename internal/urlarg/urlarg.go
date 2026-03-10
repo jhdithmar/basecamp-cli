@@ -3,6 +3,8 @@
 package urlarg
 
 import (
+	"strings"
+
 	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 )
 
@@ -98,11 +100,17 @@ func ExtractCommentWithProject(arg string) (id, projectID string) {
 	return arg, ""
 }
 
-// ExtractIDs extracts IDs from multiple arguments, handling URLs.
+// ExtractIDs extracts IDs from multiple arguments, handling URLs and
+// comma-separated values (e.g. "123,456,789").
 func ExtractIDs(args []string) []string {
-	result := make([]string, len(args))
-	for i, arg := range args {
-		result[i] = ExtractID(arg)
+	var result []string
+	for _, arg := range args {
+		for part := range strings.SplitSeq(arg, ",") {
+			part = strings.TrimSpace(part)
+			if part != "" {
+				result = append(result, ExtractID(part))
+			}
+		}
 	}
 	return result
 }

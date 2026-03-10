@@ -274,3 +274,35 @@ func TestExtractIDs(t *testing.T) {
 		}
 	}
 }
+
+func TestExtractIDs_CommaSeparated(t *testing.T) {
+	args := []string{"111,222,333"}
+	want := []string{"111", "222", "333"}
+	got := ExtractIDs(args)
+
+	if len(got) != len(want) {
+		t.Errorf("ExtractIDs() = %v, want %v", got, want)
+		return
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			t.Errorf("ExtractIDs()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestExtractIDs_CommaSeparatedWithSpaces(t *testing.T) {
+	args := []string{"111, 222, 333"}
+	want := []string{"111", "222", "333"}
+	got := ExtractIDs(args)
+
+	if len(got) != len(want) {
+		t.Errorf("ExtractIDs() = %v, want %v", got, want)
+		return
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			t.Errorf("ExtractIDs()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}

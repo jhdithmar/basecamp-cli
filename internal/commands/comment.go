@@ -302,13 +302,7 @@ Supports batch commenting with comma-separated IDs.`,
 			}
 
 			// Expand comma-separated IDs and extract from URLs
-			var expandedIDs []string
-			for p := range strings.SplitSeq(recordingArg, ",") {
-				p = strings.TrimSpace(p)
-				if p != "" {
-					expandedIDs = append(expandedIDs, extractID(p))
-				}
-			}
+			expandedIDs := extractIDs([]string{recordingArg})
 
 			// Create comments on all recordings
 			// Convert Markdown content to HTML for Basecamp's rich text fields
