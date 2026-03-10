@@ -108,13 +108,13 @@ load test_helper
 
 # Missing content errors
 
-@test "todo create without content shows error" {
+@test "todo create without content shows help" {
   create_credentials
   create_global_config '{"account_id": 99999, "project_id": 123}'
 
   run basecamp todos create
-  assert_failure
-  assert_output_contains "Todo content required"
+  assert_success
+  assert_output_contains "Create a new todo"
 }
 
 @test "comment without content shows error" {

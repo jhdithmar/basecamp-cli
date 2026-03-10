@@ -117,7 +117,7 @@ func TestTodosListRequiresProject(t *testing.T) {
 }
 
 // TestTodosCreateRequiresContent tests that todos create requires content.
-func TestTodosCreateRequiresContent(t *testing.T) {
+func TestTodosCreateShowsHelpWithoutContent(t *testing.T) {
 	app, _ := setupTodosTestApp(t)
 	app.Config.ProjectID = "123"
 	app.Config.TodolistID = "456"
@@ -125,11 +125,7 @@ func TestTodosCreateRequiresContent(t *testing.T) {
 	cmd := NewTodosCmd()
 
 	err := executeTodosCommand(cmd, app, "create")
-	require.Error(t, err)
-
-	var e *output.Error
-	require.True(t, errors.As(err, &e), "expected *output.Error, got %T: %v", err, err)
-	assert.Equal(t, "Todo content required", e.Message)
+	require.NoError(t, err, "expected help output, not an error")
 }
 
 // TestTodosShowRequiresID tests that todos show requires an ID argument.
@@ -202,7 +198,7 @@ func TestTodosPositionRequiresPosition(t *testing.T) {
 }
 
 // TestTodoShortcutRequiresContent tests that todo shortcut requires content.
-func TestTodoShortcutRequiresContent(t *testing.T) {
+func TestTodoShortcutShowsHelpWithoutContent(t *testing.T) {
 	app, _ := setupTodosTestApp(t)
 	app.Config.ProjectID = "123"
 	app.Config.TodolistID = "456"
@@ -210,11 +206,7 @@ func TestTodoShortcutRequiresContent(t *testing.T) {
 	cmd := NewTodoCmd()
 
 	err := executeTodosCommand(cmd, app)
-	require.Error(t, err)
-
-	var e *output.Error
-	require.True(t, errors.As(err, &e), "expected *output.Error, got %T: %v", err, err)
-	assert.Equal(t, "Todo content required", e.Message)
+	require.NoError(t, err, "expected help output, not an error")
 }
 
 // TestTodoShortcutRequiresProject tests that todo shortcut requires project.

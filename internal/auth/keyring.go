@@ -23,7 +23,7 @@ type Credentials struct {
 
 // Store wraps credstore.Store with typed Credentials marshaling.
 type Store struct {
-	inner   *credstore.Store
+	inner    *credstore.Store
 	warnOnce sync.Once
 }
 
