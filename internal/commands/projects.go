@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 
@@ -46,7 +47,15 @@ func renderProjectsHelp(cmd *cobra.Command, _ []string) {
 	r := output.NewRenderer(cmd.OutOrStdout(), false)
 	var b strings.Builder
 
-	b.WriteString("List, show, create, and manage Basecamp projects.\n")
+	// Subcommand help
+	if cmd.HasParent() && cmd.Parent().Name() == "projects" {
+		renderSubcommandHelp(&b, r, cmd)
+		fmt.Fprint(cmd.OutOrStdout(), b.String())
+		return
+	}
+
+	// Group help
+	b.WriteString("Manage Basecamp projects.\n")
 
 	b.WriteString("\n")
 	b.WriteString(r.Header.Render("USAGE"))
@@ -94,6 +103,86 @@ func renderProjectsHelp(cmd *cobra.Command, _ []string) {
 	b.WriteString("  basecamp projects <command> -h  Help for any subcommand\n")
 
 	fmt.Fprint(cmd.OutOrStdout(), b.String())
+}
+
+// subcommandExamples maps subcommand names to their example lines.
+var subcommandExamples = map[string][]string{
+	"list": {
+		"$ basecamp projects list",
+		"$ basecamp projects list --status archived",
+		"$ basecamp projects list --limit 10",
+	},
+	"show": {
+		"$ basecamp projects show 12345",
+		"$ basecamp projects show 12345 --json",
+	},
+	"create": {
+		`$ basecamp projects create --name "Q1 Planning"`,
+		`$ basecamp projects create --name "Redesign" --description "Website redesign"`,
+	},
+	"update": {
+		`$ basecamp projects update 12345 --name "New name"`,
+		`$ basecamp projects update 12345 --description "Updated description"`,
+	},
+	"delete": {
+		"$ basecamp projects delete 12345",
+	},
+}
+
+func renderSubcommandHelp(b *strings.Builder, r *output.Renderer, cmd *cobra.Command) {
+	b.WriteString(cmd.Long)
+	b.WriteString("\n")
+
+	b.WriteString("\n")
+	b.WriteString(r.Header.Render("USAGE"))
+	b.WriteString("\n")
+	fmt.Fprintf(b, "  basecamp projects %s\n", cmd.Use)
+
+	// Local flags (command-specific)
+	if cmd.HasLocalFlags() {
+		hasLocal := false
+		var flags strings.Builder
+		cmd.LocalFlags().VisitAll(func(f *pflag.Flag) {
+			if f.Hidden || f.Name == "help" {
+				return
+			}
+			hasLocal = true
+			if f.Shorthand != "" {
+				fmt.Fprintf(&flags, "  -%s, --%-14s %s\n", f.Shorthand, f.Name, f.Usage)
+			} else {
+				fmt.Fprintf(&flags, "      --%-14s %s\n", f.Name, f.Usage)
+			}
+		})
+		if hasLocal {
+			b.WriteString("\n")
+			b.WriteString(r.Header.Render("FLAGS"))
+			b.WriteString("\n")
+			b.WriteString(flags.String())
+		}
+	}
+
+	// Curated inherited flags
+	b.WriteString("\n")
+	b.WriteString(r.Header.Render("INHERITED FLAGS"))
+	b.WriteString("\n")
+	b.WriteString("      --help       Show help for command\n")
+	b.WriteString("  -j, --json       Output as JSON\n")
+	b.WriteString("  -q, --quiet      Quiet output\n")
+
+	// Examples
+	if examples, ok := subcommandExamples[cmd.Name()]; ok {
+		b.WriteString("\n")
+		b.WriteString(r.Header.Render("EXAMPLES"))
+		b.WriteString("\n")
+		for _, ex := range examples {
+			b.WriteString(r.Muted.Render("  "+ex) + "\n")
+		}
+	}
+
+	b.WriteString("\n")
+	b.WriteString(r.Header.Render("LEARN MORE"))
+	b.WriteString("\n")
+	b.WriteString("  basecamp projects -h  Show all projects commands\n")
 }
 
 func newProjectsListCmd() *cobra.Command {
