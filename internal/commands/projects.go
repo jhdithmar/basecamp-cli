@@ -29,13 +29,7 @@ func NewProjectsCmd() *cobra.Command {
 		},
 	}
 
-	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
-		if agent, _ := c.Root().PersistentFlags().GetBool("agent"); agent {
-			c.Root().HelpFunc()(c, args)
-			return
-		}
-		renderProjectsHelp(c, args)
-	})
+	RegisterCustomHelp(cmd, renderProjectsHelp)
 
 	cmd.AddCommand(
 		newProjectsListCmd(),

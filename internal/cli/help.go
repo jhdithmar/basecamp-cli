@@ -22,7 +22,13 @@ func rootHelpFunc(defaultHelp func(*cobra.Command, []string)) func(*cobra.Comman
 			return
 		}
 
-		// Only override the root command's help
+		// Commands with registered custom help renderers
+		if fn, ok := commands.CustomHelp(cmd); ok {
+			fn(cmd, args)
+			return
+		}
+
+		// Subcommands use cobra's default help
 		if cmd != cmd.Root() {
 			defaultHelp(cmd, args)
 			return
