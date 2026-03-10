@@ -29,6 +29,7 @@ func NewCommentsCmd() *cobra.Command {
 	cmd.AddCommand(
 		newCommentsListCmd(),
 		newCommentsShowCmd(),
+		newCommentsCreateCmd(),
 		newCommentsUpdateCmd(),
 	)
 
@@ -111,7 +112,7 @@ func runCommentsList(cmd *cobra.Command, recordingID string, limit, page int, al
 		output.WithBreadcrumbs(
 			output.Breadcrumb{
 				Action:      "add",
-				Cmd:         fmt.Sprintf("basecamp comment --content <text> --on %s", recordingID),
+				Cmd:         fmt.Sprintf("basecamp comment <text> --on %s", recordingID),
 				Description: "Add comment",
 			},
 			output.Breadcrumb{
@@ -240,14 +241,20 @@ You can pass either a comment ID or a Basecamp URL:
 	return cmd
 }
 
-// NewCommentCmd creates the comment command (shortcut for creating comments).
+// NewCommentCmd creates the 'comment' shortcut (alias for 'comments create').
 func NewCommentCmd() *cobra.Command {
-	var content string
+	cmd := newCommentsCreateCmd()
+	cmd.Use = "comment [content]"
+	cmd.Short = "Add a comment (shortcut for 'comments create')"
+	return cmd
+}
+
+func newCommentsCreateCmd() *cobra.Command {
 	var edit bool
 	var recordingIDs []string
 
 	cmd := &cobra.Command{
-		Use:   "comment",
+		Use:   "create [content]",
 		Short: "Add a comment",
 		Long: `Add a comment to one or more Basecamp items (todos, messages, cards, etc.)
 
@@ -256,8 +263,13 @@ Supports batch commenting on multiple items at once.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
 
+			var content string
+			if len(args) > 0 {
+				content = strings.Join(args, " ")
+			}
+
 			if edit && content != "" {
-				return output.ErrUsage("cannot combine --edit and --content")
+				return output.ErrUsage("cannot combine --edit and positional content")
 			}
 			if edit {
 				fi, err := os.Stdin.Stat()
@@ -270,7 +282,7 @@ Supports batch commenting on multiple items at once.`,
 				}
 			}
 
-			// Show help when invoked with no content flags; keep error if editor was opened
+			// Show help when invoked with no content; keep error if editor was opened
 			if content == "" {
 				if edit {
 					return output.ErrUsage("Comment content required")
@@ -379,10 +391,8 @@ Supports batch commenting on multiple items at once.`,
 		},
 	}
 
-	cmd.Flags().StringVarP(&content, "content", "c", "", "Comment content (required)")
 	cmd.Flags().BoolVar(&edit, "edit", false, "Open $EDITOR to compose content")
 	cmd.Flags().StringSliceVarP(&recordingIDs, "on", "r", nil, "ID(s) to comment on (required)")
-	// Note: Required flags are validated manually in RunE for better error messages
 
 	return cmd
 }

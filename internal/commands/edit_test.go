@@ -12,6 +12,10 @@ import (
 
 // runCmdWithFlags creates a command, sets flags, and runs it with a background context.
 func runCmdWithFlags(newCmd func() *cobra.Command, flags map[string]string) error {
+	return runCmdWithFlagsAndArgs(newCmd, flags, nil)
+}
+
+func runCmdWithFlagsAndArgs(newCmd func() *cobra.Command, flags map[string]string, args []string) error {
 	cmd := newCmd()
 	cmd.SetContext(context.Background())
 	for k, v := range flags {
@@ -19,39 +23,33 @@ func runCmdWithFlags(newCmd func() *cobra.Command, flags map[string]string) erro
 			return err
 		}
 	}
-	return cmd.RunE(cmd, nil)
+	return cmd.RunE(cmd, args)
 }
 
-// TestEditContentMutualExclusion verifies --edit and --content cannot be combined.
+// TestEditContentMutualExclusion verifies --edit and content cannot be combined.
 func TestEditContentMutualExclusion(t *testing.T) {
-	tests := []struct {
-		name   string
-		newCmd func() *cobra.Command
-		flags  map[string]string
-	}{
-		{
-			name:   "comment --edit --content",
-			newCmd: NewCommentCmd,
-			flags:  map[string]string{"content": "some text", "edit": "true", "on": "12345"},
-		},
-		{
-			name:   "message --edit --content",
-			newCmd: NewMessageCmd,
-			flags:  map[string]string{"subject": "Test", "content": "some text", "edit": "true"},
-		},
-	}
+	t.Run("comment --edit with positional content", func(t *testing.T) {
+		err := runCmdWithFlagsAndArgs(NewCommentCmd,
+			map[string]string{"edit": "true", "on": "12345"},
+			[]string{"some text"},
+		)
+		if err == nil {
+			t.Fatal("expected error for --edit + positional content, got nil")
+		}
+		if !strings.Contains(err.Error(), "cannot combine") {
+			t.Errorf("error = %q, want 'cannot combine' message", err)
+		}
+	})
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := runCmdWithFlags(tt.newCmd, tt.flags)
-			if err == nil {
-				t.Fatal("expected error for --edit + --content, got nil")
-			}
-			if !strings.Contains(err.Error(), "cannot combine --edit and --content") {
-				t.Errorf("error = %q, want 'cannot combine' message", err)
-			}
-		})
-	}
+	t.Run("message --edit --content", func(t *testing.T) {
+		err := runCmdWithFlags(NewMessageCmd, map[string]string{"subject": "Test", "content": "some text", "edit": "true"})
+		if err == nil {
+			t.Fatal("expected error for --edit + --content, got nil")
+		}
+		if !strings.Contains(err.Error(), "cannot combine --edit and --content") {
+			t.Errorf("error = %q, want 'cannot combine' message", err)
+		}
+	})
 }
 
 // TestEditRejectsPipedStdin verifies --edit fails when stdin is not a terminal.

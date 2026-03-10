@@ -70,6 +70,7 @@ CMD basecamp checkins questions
 CMD basecamp commands
 CMD basecamp comment
 CMD basecamp comments
+CMD basecamp comments create
 CMD basecamp comments list
 CMD basecamp comments show
 CMD basecamp comments update
@@ -246,7 +247,6 @@ CMD basecamp tools update
 CMD basecamp tui
 CMD basecamp unassign
 CMD basecamp upgrade
-CMD basecamp version
 CMD basecamp uploads
 CMD basecamp uploads documents
 CMD basecamp uploads documents create
@@ -275,6 +275,7 @@ CMD basecamp vaults show
 CMD basecamp vaults update
 CMD basecamp vaults uploads
 CMD basecamp vaults uploads list
+CMD basecamp version
 CMD basecamp webhooks
 CMD basecamp webhooks create
 CMD basecamp webhooks delete
@@ -1719,7 +1720,6 @@ FLAG basecamp commands --verbose type=count
 FLAG basecamp comment --account type=string
 FLAG basecamp comment --agent type=bool
 FLAG basecamp comment --cache-dir type=string
-FLAG basecamp comment --content type=string
 FLAG basecamp comment --count type=bool
 FLAG basecamp comment --edit type=bool
 FLAG basecamp comment --hints type=bool
@@ -1755,6 +1755,26 @@ FLAG basecamp comments --stats type=bool
 FLAG basecamp comments --styled type=bool
 FLAG basecamp comments --todolist type=string
 FLAG basecamp comments --verbose type=count
+FLAG basecamp comments create --account type=string
+FLAG basecamp comments create --agent type=bool
+FLAG basecamp comments create --cache-dir type=string
+FLAG basecamp comments create --count type=bool
+FLAG basecamp comments create --edit type=bool
+FLAG basecamp comments create --hints type=bool
+FLAG basecamp comments create --ids-only type=bool
+FLAG basecamp comments create --json type=bool
+FLAG basecamp comments create --markdown type=bool
+FLAG basecamp comments create --md type=bool
+FLAG basecamp comments create --no-hints type=bool
+FLAG basecamp comments create --no-stats type=bool
+FLAG basecamp comments create --on type=stringSlice
+FLAG basecamp comments create --profile type=string
+FLAG basecamp comments create --project type=string
+FLAG basecamp comments create --quiet type=bool
+FLAG basecamp comments create --stats type=bool
+FLAG basecamp comments create --styled type=bool
+FLAG basecamp comments create --todolist type=string
+FLAG basecamp comments create --verbose type=count
 FLAG basecamp comments list --account type=string
 FLAG basecamp comments list --agent type=bool
 FLAG basecamp comments list --all type=bool
@@ -5367,24 +5387,6 @@ FLAG basecamp upgrade --stats type=bool
 FLAG basecamp upgrade --styled type=bool
 FLAG basecamp upgrade --todolist type=string
 FLAG basecamp upgrade --verbose type=count
-FLAG basecamp version --account type=string
-FLAG basecamp version --agent type=bool
-FLAG basecamp version --cache-dir type=string
-FLAG basecamp version --count type=bool
-FLAG basecamp version --hints type=bool
-FLAG basecamp version --ids-only type=bool
-FLAG basecamp version --json type=bool
-FLAG basecamp version --markdown type=bool
-FLAG basecamp version --md type=bool
-FLAG basecamp version --no-hints type=bool
-FLAG basecamp version --no-stats type=bool
-FLAG basecamp version --profile type=string
-FLAG basecamp version --project type=string
-FLAG basecamp version --quiet type=bool
-FLAG basecamp version --stats type=bool
-FLAG basecamp version --styled type=bool
-FLAG basecamp version --todolist type=string
-FLAG basecamp version --verbose type=count
 FLAG basecamp uploads --account type=string
 FLAG basecamp uploads --agent type=bool
 FLAG basecamp uploads --cache-dir type=string
@@ -6025,6 +6027,24 @@ FLAG basecamp vaults uploads list --styled type=bool
 FLAG basecamp vaults uploads list --todolist type=string
 FLAG basecamp vaults uploads list --vault type=string
 FLAG basecamp vaults uploads list --verbose type=count
+FLAG basecamp version --account type=string
+FLAG basecamp version --agent type=bool
+FLAG basecamp version --cache-dir type=string
+FLAG basecamp version --count type=bool
+FLAG basecamp version --hints type=bool
+FLAG basecamp version --ids-only type=bool
+FLAG basecamp version --json type=bool
+FLAG basecamp version --markdown type=bool
+FLAG basecamp version --md type=bool
+FLAG basecamp version --no-hints type=bool
+FLAG basecamp version --no-stats type=bool
+FLAG basecamp version --profile type=string
+FLAG basecamp version --project type=string
+FLAG basecamp version --quiet type=bool
+FLAG basecamp version --stats type=bool
+FLAG basecamp version --styled type=bool
+FLAG basecamp version --todolist type=string
+FLAG basecamp version --verbose type=count
 FLAG basecamp webhooks --account type=string
 FLAG basecamp webhooks --agent type=bool
 FLAG basecamp webhooks --cache-dir type=string
@@ -6216,6 +6236,7 @@ SUB basecamp checkins questions
 SUB basecamp commands
 SUB basecamp comment
 SUB basecamp comments
+SUB basecamp comments create
 SUB basecamp comments list
 SUB basecamp comments show
 SUB basecamp comments update
@@ -6392,7 +6413,6 @@ SUB basecamp tools update
 SUB basecamp tui
 SUB basecamp unassign
 SUB basecamp upgrade
-SUB basecamp version
 SUB basecamp uploads
 SUB basecamp uploads documents
 SUB basecamp uploads documents create
@@ -6421,6 +6441,7 @@ SUB basecamp vaults show
 SUB basecamp vaults update
 SUB basecamp vaults uploads
 SUB basecamp vaults uploads list
+SUB basecamp version
 SUB basecamp webhooks
 SUB basecamp webhooks create
 SUB basecamp webhooks delete
