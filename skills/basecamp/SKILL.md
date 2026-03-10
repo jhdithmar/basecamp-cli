@@ -73,7 +73,7 @@ Full CLI coverage: 130 endpoints across todos, cards, messages, files, schedule,
 2. **Parse URLs first** with `basecamp url parse "<url>"` to extract IDs
 3. **Comments are flat** - reply to parent recording, not to comments
 4. **Check context** via `.basecamp/config.json` before assuming project
-5. **Content fields accept Markdown** — `--content` on messages and comments accepts Markdown syntax; the CLI converts to HTML automatically. Use Markdown formatting (lists, bold, links, code blocks) for rich content. For todos, documents, and cards, `--content` is sent as-is — use plain text or HTML directly.
+5. **Content fields accept Markdown** — the body argument on messages and comments accepts Markdown syntax; the CLI converts to HTML automatically. Use Markdown formatting (lists, bold, links, code blocks) for rich content. For todos, documents, and cards, content is sent as-is — use plain text or HTML directly.
 6. **Project scope is mandatory for most commands** — via `--in <project>` or `.basecamp/config.json`. Cross-project exceptions: `basecamp reports assigned` for assigned work, `basecamp recordings <type>` for browsing by type.
 
 ### Output Modes
@@ -134,15 +134,15 @@ basecamp <cmd> --page 1     # First page only, no auto-pagination
 | My todos (cross-project)   | `basecamp reports assigned --json` (defaults to "me") |
 | All todos (cross-project)  | `basecamp recordings todos --json` (no assignee data — cannot filter by person) |
 | Overdue todos | `basecamp todos --overdue --in <project> --json` |
-| Create todo | `basecamp todo --content "Task" --in <project> --list <list> --json` |
-| Create todolist | `basecamp todolists create --name "Name" --in <project> --json` |
+| Create todo | `basecamp todo "Task" --in <project> --list <list> --json` |
+| Create todolist | `basecamp todolists create "Name" --in <project> --json` |
 | Complete todo | `basecamp done <id> --json` |
 | List cards | `basecamp cards --in <project> --json` |
-| Create card | `basecamp card --title "Title" --in <project> --json` |
+| Create card | `basecamp card "Title" --in <project> --json` |
 | Move card | `basecamp cards move <id> --to <column> --in <project> --json` |
 | Post message | `basecamp message "Title" "Body" --in <project> --json` |
 | Post silently | `basecamp message "Title" "Body" --no-subscribe --in <project> --json` |
-| Post to campfire | `basecamp campfire post --content "Message" --in <project> --json` |
+| Post to campfire | `basecamp campfire post "Message" --in <project> --json` |
 | Add comment | `basecamp comment <recording_id> "Text" --in <project> --json` |
 | Search | `basecamp search "query" --json` |
 | Parse URL | `basecamp url parse "<url>" --json` |
@@ -221,11 +221,11 @@ basecamp done <todo_id>
 
 ```bash
 # Create todo for PR work
-basecamp todo --content "Review PR #42" --in <project> --assignee me --due tomorrow
+basecamp todo "Review PR #42" --in <project> --assignee me --due tomorrow
 
 # When merged
 basecamp done <todo_id>
-basecamp campfire post --content "Merged PR #42" --in <project>
+basecamp campfire post "Merged PR #42" --in <project>
 ```
 
 ### Bulk Process Overdue Todos
@@ -261,7 +261,7 @@ basecamp files download <upload_id> --in <project> --out ./downloads
 ```bash
 basecamp projects list --json                     # List all
 basecamp projects show <id> --json                # Show details
-basecamp projects create --name "Name" --json     # Create
+basecamp projects create "Name" --json              # Create
 basecamp projects update <id> --name "New"        # Update
 ```
 
@@ -273,7 +273,7 @@ basecamp todos --assignee me --in <project>       # My todos
 basecamp todos --overdue --in <project>           # Overdue only
 basecamp todos --status completed --in <project>  # Completed
 basecamp todos --list <todolist_id> --in <project> # In specific list
-basecamp todo --content "Task" --in <project> --list <list> --assignee me --due tomorrow
+basecamp todo "Task" --in <project> --list <list> --assignee me --due tomorrow
 basecamp done <id> [id...]                        # Complete (multiple OK)
 basecamp reopen <id>                              # Uncomplete
 basecamp todos position <id> --to 1               # Move to top
@@ -289,8 +289,8 @@ Todolists are containers for todos. Create a todolist before adding todos.
 ```bash
 basecamp todolists --in <project> --json                          # List todolists
 basecamp todolists show <id> --in <project>                       # Show details
-basecamp todolists create --name "Name" --in <project> --json     # Create
-basecamp todolists create --name "Name" --description "Desc" --in <project>
+basecamp todolists create "Name" --in <project> --json             # Create
+basecamp todolists create "Name" --description "Desc" --in <project>
 basecamp todolists update <id> --name "New" --in <project>        # Update
 ```
 
@@ -304,7 +304,7 @@ basecamp cards --card-table <id> --in <project>   # Cards from specific table (r
 basecamp cards --column <id> --in <project>       # Cards in column
 basecamp cards columns --in <project> --json      # List columns (needs --card-table if multiple)
 basecamp cards show <id> --in <project>           # Card details
-basecamp card --title "Title" --content "<p>Body</p>" --in <project> --column <id>
+basecamp card "Title" "<p>Body</p>" --in <project> --column <id>
 basecamp cards update <id> --title "New" --due tomorrow --assignee me
 basecamp cards move <id> --to <column_id>         # Move to column (numeric ID)
 basecamp cards move <id> --to "Done" --card-table <table_id>  # Move by name (needs table)
@@ -317,7 +317,7 @@ basecamp cards move <id> --to "Done" --card-table <table_id>  # Move by name (ne
 **Card Steps (checklists):**
 ```bash
 basecamp cards steps <card_id> --in <project>     # List steps
-basecamp cards step create --title "Step" --card <id> --in <project>
+basecamp cards step create "Step" --card <id> --in <project>
 basecamp cards step complete <step_id> --in <project>
 basecamp cards step uncomplete <step_id>
 ```
@@ -325,7 +325,7 @@ basecamp cards step uncomplete <step_id>
 **Column management:**
 ```bash
 basecamp cards column show <id> --in <project>
-basecamp cards column create --title "Name" --in <project>
+basecamp cards column create "Name" --in <project>
 basecamp cards column update <id> --title "New"
 basecamp cards column move <id> --position 2
 basecamp cards column color <id> --color blue
@@ -338,8 +338,8 @@ basecamp cards column watch <id>                  # Subscribe to column
 ```bash
 basecamp messages --in <project> --json           # List messages
 basecamp messages show <id> --in <project>        # Show message
-basecamp message --subject "Title" --content "Body" --in <project>
-basecamp messages update <id> --subject "New" --content "Updated"
+basecamp message "Title" "Body" --in <project>
+basecamp messages update <id> --title "New" --body "Updated"
 basecamp messages pin <id> --in <project>         # Pin to top
 basecamp messages unpin <id>                      # Unpin
 ```
@@ -367,10 +367,10 @@ basecamp files --vault <folder_id> --in <project> # List folder contents
 basecamp files show <id> --in <project>           # Show item (auto-detects type)
 basecamp files download <id> --in <project>       # Download file
 basecamp files download <id> --out ./dir          # Download to specific dir
-basecamp files folder create --name "Folder" --in <project>
-basecamp files doc create --title "Doc" --content "Body" --in <project>
-basecamp files doc create --title "Draft" --draft --in <project>
-basecamp files doc create --title "Notes" --content "..." --no-subscribe --in <project>
+basecamp files folder create "Folder" --in <project>
+basecamp files doc create "Doc" "Body" --in <project>
+basecamp files doc create "Draft" --draft --in <project>
+basecamp files doc create "Notes" "..." --no-subscribe --in <project>
 basecamp files update <id> --title "New" --content "Updated"
 ```
 
@@ -400,10 +400,10 @@ basecamp checkins questions --in <project>        # List questions
 basecamp checkins question <id> --in <project>    # Question details
 basecamp checkins answers <question_id> --in <project>  # List answers
 basecamp checkins answer <id> --in <project>      # Answer details
-basecamp checkins question create --title "What did you work on?" --in <project>
-basecamp checkins question update <id> --title "New question" --frequency every_week
-basecamp checkins answer create --question <id> --content "My answer" --in <project>
-basecamp checkins answer update <id> --content "Updated" --in <project>
+basecamp checkins question create "What did you work on?" --in <project>
+basecamp checkins question update <id> "New question" --frequency every_week
+basecamp checkins answer create "My answer" --question <id> --in <project>
+basecamp checkins answer update <id> "Updated" --in <project>
 ```
 
 **Schedule options:** `--frequency` (every_day, every_week, every_other_week, every_month, on_certain_days), `--days 1,2,3,4,5` (0=Sun), `--time "5:00pm"`
@@ -489,8 +489,8 @@ basecamp subscriptions remove <id> --people 1,2,3     # Remove people
 
 ```bash
 basecamp lineup create "Milestone" "2024-03-15"   # Create marker
-basecamp lineup create --name "Launch" --date tomorrow
-basecamp lineup update <id> --name "New Name" --date "+7"
+basecamp lineup create "Launch" tomorrow
+basecamp lineup update <id> "New Name" "+7"
 basecamp lineup delete <id>
 ```
 
@@ -501,7 +501,7 @@ basecamp lineup delete <id>
 ```bash
 basecamp campfire --in <project> --json           # List campfires
 basecamp campfire messages --in <project> --json  # List messages
-basecamp campfire post --content "Hello!" --in <project>
+basecamp campfire post "Hello!" --in <project>
 basecamp campfire line <line_id> --in <project>   # Show line
 basecamp campfire delete <line_id> --in <project> # Delete line
 ```
@@ -614,9 +614,9 @@ basecamp auth status                              # Verify auth working
 cat ~/.config/basecamp/accounts.json              # Check available accounts
 ```
 
-**Invalid flag errors:** All shortcut commands require explicit flags:
-- `basecamp todo --content "text"` (not `basecamp todo "text"`)
-- `basecamp card --title "title"` (not `basecamp card "title"`)
+**Invalid flag errors:** Shortcut commands use positional arguments:
+- `basecamp todo "text"` (not `basecamp todo --content "text"`)
+- `basecamp card "title"` (not `basecamp card --title "title"`)
 
 **URL malformed (curl exit 3):** Special characters in content. Use plain text or properly escaped HTML.
 
