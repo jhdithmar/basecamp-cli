@@ -29,6 +29,8 @@ func NewProjectsCmd() *cobra.Command {
 		},
 	}
 
+	cmd.SetHelpFunc(renderProjectsHelp)
+
 	cmd.AddCommand(
 		newProjectsListCmd(),
 		newProjectsShowCmd(),
@@ -38,6 +40,60 @@ func NewProjectsCmd() *cobra.Command {
 	)
 
 	return cmd
+}
+
+func renderProjectsHelp(cmd *cobra.Command, args []string) {
+	r := output.NewRenderer(cmd.OutOrStdout(), false)
+	var b strings.Builder
+
+	b.WriteString("List, show, create, and manage Basecamp projects.\n")
+
+	b.WriteString("\n")
+	b.WriteString(r.Header.Render("USAGE"))
+	b.WriteString("\n")
+	b.WriteString("  basecamp projects <command> [flags]\n")
+
+	b.WriteString("\n")
+	b.WriteString(r.Header.Render("COMMANDS"))
+	b.WriteString("\n")
+
+	type entry struct{ name, desc string }
+	entries := []entry{
+		{"list", "List projects"},
+		{"show", "Show project details"},
+		{"create", "Create a new project"},
+		{"update", "Update a project"},
+		{"delete", "Delete (trash) a project"},
+	}
+	for _, e := range entries {
+		fmt.Fprintf(&b, "  %-10s %s\n", e.name, e.desc)
+	}
+
+	b.WriteString("\n")
+	b.WriteString(r.Header.Render("FLAGS"))
+	b.WriteString("\n")
+	b.WriteString("  -p, --project    Project ID or name\n")
+	b.WriteString("      --help       Show help for command\n")
+
+	b.WriteString("\n")
+	b.WriteString(r.Header.Render("EXAMPLES"))
+	b.WriteString("\n")
+	examples := []string{
+		"$ basecamp projects list",
+		"$ basecamp projects list --status archived",
+		"$ basecamp projects show 12345",
+		`$ basecamp projects create --name "New project"`,
+	}
+	for _, ex := range examples {
+		b.WriteString(r.Muted.Render("  "+ex) + "\n")
+	}
+
+	b.WriteString("\n")
+	b.WriteString(r.Header.Render("LEARN MORE"))
+	b.WriteString("\n")
+	b.WriteString("  basecamp projects <command> -h  Help for any subcommand\n")
+
+	fmt.Fprint(cmd.OutOrStdout(), b.String())
 }
 
 func newProjectsListCmd() *cobra.Command {
