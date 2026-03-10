@@ -124,6 +124,7 @@ func (r *Resolver) IsInteractive() bool {
 // about how it was resolved.
 type ResolvedValue struct {
 	Value  string
+	Label  string
 	Source ResolvedSource
 }
 

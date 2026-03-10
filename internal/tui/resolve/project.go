@@ -88,6 +88,7 @@ func (r *Resolver) Project(ctx context.Context) (*ResolvedValue, error) {
 
 	return &ResolvedValue{
 		Value:  selected.ID,
+		Label:  selected.Title,
 		Source: SourcePrompt,
 	}, nil
 }

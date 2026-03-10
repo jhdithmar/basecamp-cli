@@ -230,9 +230,17 @@ func wizardProject(cmd *cobra.Command, app *appctx.App, styles *tui.Styles) (str
 		return "", nil
 	}
 
+	// Clear any existing project so the picker always shows
+	app.Config.ProjectID = ""
+
 	resolved, err := app.Resolve().Project(cmd.Context())
 	if err != nil {
 		return "", err
+	}
+
+	if resolved.Label != "" {
+		fmt.Fprintln(w, styles.Success.Render("  Default project: "+resolved.Label))
+		fmt.Fprintln(w)
 	}
 
 	app.Config.ProjectID = resolved.Value
