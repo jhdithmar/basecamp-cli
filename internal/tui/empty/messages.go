@@ -47,7 +47,7 @@ func NoTodos(context string) Message {
 	default:
 		msg.Body = "No todos in this project."
 		msg.Hints = []string{
-			"Create a todo with: basecamp todo --content <text>",
+			"Create a todo with: basecamp todo <text>",
 		}
 	}
 	return msg

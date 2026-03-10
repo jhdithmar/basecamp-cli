@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -34,7 +35,7 @@ func NewTodosCmd() *cobra.Command {
 		Use:         "todos",
 		Short:       "Manage todos",
 		Long:        "List, show, create, and manage Basecamp todos.",
-		Annotations: map[string]string{"agent_notes": "--assignee only works on todos, not cards or other content types\nbasecamp done accepts multiple IDs: basecamp done 1 2 3\n--assignee and --overdue require a project (--in, global flag, or config default); for cross-project use basecamp reports assigned/overdue\nUse basecamp todo --content \"text\" not basecamp todo \"text\""},
+		Annotations: map[string]string{"agent_notes": "--assignee only works on todos, not cards or other content types\nbasecamp done accepts multiple IDs: basecamp done 1 2 3\n--assignee and --overdue require a project (--in, global flag, or config default); for cross-project use basecamp reports assigned/overdue"},
 	}
 
 	cmd.AddCommand(
@@ -62,14 +63,13 @@ func NewReopenCmd() *cobra.Command {
 
 // NewTodoCmd creates the 'todo' command as a shortcut for 'todos create'.
 func NewTodoCmd() *cobra.Command {
-	var content string
 	var project string
 	var todolist string
 	var assignee string
 	var due string
 
 	cmd := &cobra.Command{
-		Use:   "todo",
+		Use:   "todo [content]",
 		Short: "Create a new todo (shortcut for 'todos create')",
 		Long:  "Create a new todo in a project. Shortcut for 'basecamp todos create'.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -79,9 +79,10 @@ func NewTodoCmd() *cobra.Command {
 			}
 
 			// Show help when invoked with no content
-			if content == "" {
+			if len(args) == 0 {
 				return cmd.Help()
 			}
+			content := strings.Join(args, " ")
 
 			if err := ensureAccount(cmd, app); err != nil {
 				return err
@@ -190,7 +191,6 @@ func NewTodoCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&content, "content", "c", "", "Todo content (required)")
 	cmd.Flags().StringVarP(&project, "project", "p", "", "Project ID or name")
 	cmd.Flags().StringVar(&project, "in", "", "Project ID (alias for --project)")
 	cmd.Flags().StringVarP(&todolist, "list", "l", "", "Todolist ID")
@@ -557,14 +557,13 @@ func newTodosShowCmd() *cobra.Command {
 }
 
 func newTodosCreateCmd() *cobra.Command {
-	var content string
 	var project string
 	var todolist string
 	var assignee string
 	var due string
 
 	cmd := &cobra.Command{
-		Use:   "create",
+		Use:   "create [content]",
 		Short: "Create a new todo",
 		Long:  "Create a new todo in a project.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -574,9 +573,10 @@ func newTodosCreateCmd() *cobra.Command {
 			}
 
 			// Show help when invoked with no content
-			if content == "" {
+			if len(args) == 0 {
 				return cmd.Help()
 			}
+			content := strings.Join(args, " ")
 
 			if err := ensureAccount(cmd, app); err != nil {
 				return err
@@ -685,7 +685,6 @@ func newTodosCreateCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&content, "content", "c", "", "Todo content (required)")
 	cmd.Flags().StringVarP(&project, "project", "p", "", "Project ID or name")
 	cmd.Flags().StringVar(&project, "in", "", "Project ID (alias for --project)")
 	cmd.Flags().StringVarP(&todolist, "list", "l", "", "Todolist ID")

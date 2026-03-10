@@ -223,7 +223,7 @@ load test_helper
 
   # Email assignees are valid input and passed to ResolvePerson
   # With a fake account, this will fail on API call (not input validation)
-  run basecamp todo --content "test" --assignee "john@example.com"
+  run basecamp todo "test" --assignee "john@example.com"
   assert_failure
   # Should NOT fail with "Invalid assignee" - emails are valid
   assert_output_not_contains "Invalid assignee"

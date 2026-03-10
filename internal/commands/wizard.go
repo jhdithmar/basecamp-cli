@@ -339,7 +339,7 @@ func showSuccess(w io.Writer, styles *tui.Styles, result WizardResult) {
 	examples := []struct{ cmd, desc string }{
 		{"basecamp projects list", "List your projects"},
 		{"basecamp todos list", "List to-dos"},
-		{"basecamp todo -c \"Buy milk\"", "Create a to-do"},
+		{"basecamp todo \"Buy milk\"", "Create a to-do"},
 		{"basecamp search \"quarterly\"", "Search across Basecamp"},
 	}
 	for _, ex := range examples {

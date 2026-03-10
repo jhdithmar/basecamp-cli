@@ -211,7 +211,7 @@ func TestTodoShortcutRequiresProject(t *testing.T) {
 
 	cmd := NewTodoCmd()
 
-	err := executeTodosCommand(cmd, app, "--content", "Test todo")
+	err := executeTodosCommand(cmd, app, "Test todo")
 	require.Error(t, err)
 
 	var e *output.Error
@@ -381,7 +381,7 @@ func TestTodosCreateContentIsPlainText(t *testing.T) {
 	cmd := NewTodosCmd()
 	plainTextContent := "Fix the authentication bug"
 
-	err := executeTodosCommand(cmd, app, "create", "--content", plainTextContent)
+	err := executeTodosCommand(cmd, app, "create", plainTextContent)
 	require.NoError(t, err, "command should succeed with mock transport")
 	require.NotEmpty(t, transport.capturedBody, "expected request body to be captured")
 
