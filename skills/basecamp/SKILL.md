@@ -144,6 +144,9 @@ basecamp <cmd> --page 1     # First page only, no auto-pagination
 | Post silently | `basecamp message "Title" "Body" --no-subscribe --in <project> --json` |
 | Post to campfire | `basecamp campfire post --content "Message" --in <project> --json` |
 | Add comment | `basecamp comment <recording_id> "Text" --in <project> --json` |
+| Assign todo | `basecamp assign <id> --to <person> --in <project> --json` |
+| Unassign todo | `basecamp unassign <id> --from <person> --in <project> --json` |
+| Boost/react | `basecamp react "👍" --on <id> --in <project> --json` |
 | Search | `basecamp search "query" --json` |
 | Parse URL | `basecamp url parse "<url>" --json` |
 | Download file | `basecamp files download <id> --in <project>` |
@@ -231,8 +234,8 @@ basecamp campfire post --content "Merged PR #42" --in <project>
 ### Bulk Process Overdue Todos
 
 ```bash
-# Preview overdue todos
-basecamp todos sweep --overdue --dry-run --in <project>
+# Preview overdue todos (--dry-run requires an action flag)
+basecamp todos sweep --overdue --complete --dry-run --in <project>
 
 # Complete all with comment
 basecamp todos sweep --overdue --complete --comment "Cleaning up" --in <project>
@@ -478,11 +481,11 @@ basecamp webhooks delete <id> --in <project>
 ### Subscriptions
 
 ```bash
-basecamp subscriptions <recording_id> --in <project>  # Who's subscribed
-basecamp subscriptions subscribe <id> --in <project>  # Subscribe yourself
-basecamp subscriptions unsubscribe <id>               # Unsubscribe
-basecamp subscriptions add <id> --people 1,2,3        # Add people
-basecamp subscriptions remove <id> --people 1,2,3     # Remove people
+basecamp subscriptions <recording_id>              # Who's subscribed
+basecamp subscriptions subscribe <id>              # Subscribe yourself
+basecamp subscriptions unsubscribe <id>            # Unsubscribe
+basecamp subscriptions add <id> --people 1,2,3     # Add people
+basecamp subscriptions remove <id> --people 1,2,3  # Remove people
 ```
 
 ### Lineup (Account-wide Markers)
@@ -509,12 +512,12 @@ basecamp campfire delete <line_id> --in <project> # Delete line
 ### People
 
 ```bash
-basecamp people --json                            # All people in account
-basecamp people --in <project> --json             # People on project
+basecamp people list --json                       # All people in account
+basecamp people list --in <project> --json        # People on project
 basecamp me --json                                # Current user
 basecamp people show <id> --json                  # Person details
-basecamp people add <id> --in <project>           # Add to project
-basecamp people remove <id> --in <project>        # Remove from project
+basecamp people add <id> -p <project>              # Add to project
+basecamp people remove <id> -p <project>           # Remove from project
 ```
 
 ### Search

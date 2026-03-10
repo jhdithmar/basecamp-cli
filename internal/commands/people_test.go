@@ -323,3 +323,29 @@ func TestMeWithAccountConfigured(t *testing.T) {
 	assert.False(t, foundSetup, "expected no setup breadcrumb when account is configured")
 	assert.True(t, foundProjects, "expected projects breadcrumb when account is configured")
 }
+
+// TestPeopleListInFlagIsProjectAlias verifies that --in binds to the same
+// variable as --project, so both flags are accepted and equivalent.
+func TestPeopleListInFlagIsProjectAlias(t *testing.T) {
+	cmd := NewPeopleCmd()
+
+	// Find the "list" subcommand
+	var listCmd *cobra.Command
+	for _, sub := range cmd.Commands() {
+		if sub.Name() == "list" {
+			listCmd = sub
+			break
+		}
+	}
+	require.NotNil(t, listCmd, "expected 'list' subcommand")
+
+	// Verify both --project and --in flags exist
+	projectFlag := listCmd.Flags().Lookup("project")
+	inFlag := listCmd.Flags().Lookup("in")
+	require.NotNil(t, projectFlag, "expected --project flag")
+	require.NotNil(t, inFlag, "expected --in flag")
+
+	// Setting --in should set the same value as --project
+	require.NoError(t, listCmd.Flags().Set("in", "12345"))
+	assert.Equal(t, "12345", projectFlag.Value.String())
+}

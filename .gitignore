@@ -30,5 +30,9 @@ benchmarks-current.txt
 # PGO profile (generated, can optionally be committed for reproducible builds)
 default.pgo
 
+# Skill test output
+e2e/skill-test-runs/
+e2e/skill-test-results.md
+
 # Nix
 result

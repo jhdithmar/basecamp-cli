@@ -3424,6 +3424,7 @@ FLAG basecamp people list --cache-dir type=string
 FLAG basecamp people list --count type=bool
 FLAG basecamp people list --hints type=bool
 FLAG basecamp people list --ids-only type=bool
+FLAG basecamp people list --in type=string
 FLAG basecamp people list --json type=bool
 FLAG basecamp people list --limit type=int
 FLAG basecamp people list --markdown type=bool

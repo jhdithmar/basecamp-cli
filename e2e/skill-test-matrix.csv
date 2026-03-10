@@ -1,0 +1,246 @@
+id,category,subcategory,cli_command,natural_language_query,expected_behavior,tests_skill_section,requires_auth,mutating,status,notes
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 1: ORIENTATION — "Where am I? What do I have?"
+# ═══════════════════════════════════════════════════════════════
+#
+1,orientation,first-time,basecamp auth status,am I logged into basecamp?,Check auth and show status,Error Handling,yes,no,,
+2,orientation,first-time,basecamp doctor --json,is the basecamp CLI working?,Run diagnostics,Error Handling,no,no,,
+3,orientation,first-time,basecamp me --json,who am I?,Show current user profile,Resource Reference,yes,no,,
+4,orientation,discovery,basecamp projects --json,what projects am I on?,List all projects,Quick Reference,yes,no,,
+5,orientation,discovery,basecamp projects --json,show me my basecamp projects,List all projects,Quick Reference,yes,no,,
+6,orientation,discovery,basecamp projects --count,how many projects do I have?,Show count,Output Modes,yes,no,,
+7,orientation,context,cat .basecamp/config.json,what project is configured for this repo?,Check local config,Configuration,no,no,,
+8,orientation,context,basecamp config show,what's my current basecamp config?,Show config,Configuration,no,no,,
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 2: TODOS — The bread and butter
+# ═══════════════════════════════════════════════════════════════
+#
+# --- Listing & Filtering ---
+10,todos,list-basic,basecamp todos --in <project> --json,show me the todos,List todos in project,Quick Reference,yes,no,,
+11,todos,list-basic,basecamp todos --in <project> --json,what's on the todo list?,List todos — casual phrasing,Quick Reference,yes,no,,
+12,todos,list-mine,basecamp todos --assignee me --in <project> --json,what are my todos?,Filter to my assigned todos,Quick Reference,yes,no,,
+13,todos,list-mine,basecamp todos --assignee me --in <project> --json,what do I need to do?,Vague but means "my todos",Quick Reference,yes,no,,
+14,todos,list-mine-xproject,basecamp reports assigned --json,what's assigned to me?,Cross-project assigned work,Decision Trees,yes,no,,
+15,todos,list-mine-xproject,basecamp reports assigned --json,what am I supposed to be working on?,Vague cross-project query,Decision Trees,yes,no,,
+16,todos,list-overdue,basecamp todos --overdue --in <project> --json,any overdue todos?,Overdue filter,Quick Reference,yes,no,,
+17,todos,list-overdue,basecamp todos --overdue --in <project> --json,what's late?,Very casual overdue query,Quick Reference,yes,no,,
+18,todos,list-completed,basecamp todos --status completed --in <project> --json,show completed todos,Status filter,Resource Reference,yes,no,,
+19,todos,list-completed,basecamp todos --status completed --in <project> --json,what's been done already?,Casual completed query,Resource Reference,yes,no,,
+20,todos,list-in-list,basecamp todos --list <todolist_id> --in <project> --json,show todos in the "Launch" list,Specific todolist,Resource Reference,yes,no,,
+21,todos,list-person,basecamp todos --assignee <name> --in <project> --json,what's assigned to Sarah?,Filter by other person,Resource Reference,yes,no,,
+22,todos,list-paginated,basecamp todos --in <project> --limit 5 --json,show me the first 5 todos,Pagination,Pagination,yes,no,,
+23,todos,list-all,basecamp todos --in <project> --all --json,show me ALL the todos,Pagination override,Pagination,yes,no,,
+# --- Creating ---
+30,todos,create-simple,basecamp todo --content "Buy coffee" --in <project> --json,add a todo: buy coffee,Simple create,Quick Reference,yes,yes,,
+31,todos,create-assigned,basecamp todo --content "Review PR" --assignee me --in <project> --json,create a todo "Review PR" and assign it to me,Create + assign,Quick Reference,yes,yes,,
+32,todos,create-due,basecamp todo --content "Ship feature" --due tomorrow --in <project> --json,add a todo "Ship feature" due tomorrow,Create + due date,Smart Defaults,yes,yes,,
+33,todos,create-full,"basecamp todo --content ""Write docs"" --assignee me --due ""next friday"" --in <project> --list <list> --json","make a todo ""Write docs"" assigned to me due next friday in the Launch list",Full create with all options,Smart Defaults,yes,yes,,
+34,todos,create-casual,basecamp todo --content "Fix the bug" --in <project> --json,remind me to fix the bug,Casual create intent,Quick Reference,yes,yes,,
+35,todos,create-list-first,basecamp todolists create --name "Sprint 42" --in <project> --json,create a new todolist called "Sprint 42",Create container before todos,Resource Reference,yes,yes,,
+# --- Completing ---
+40,todos,complete,basecamp done <id> --json,mark that todo as done,Complete by ID,Quick Reference,yes,yes,,
+41,todos,complete,basecamp done <id> --json,finish todo <id>,Casual complete,Quick Reference,yes,yes,,
+42,todos,complete-casual,n/a - search then done,"I finished ""Buy coffee""",Complete by name — needs search first,Common Workflows,yes,yes,,
+43,todos,reopen,basecamp reopen <id>,wait actually reopen that todo,Uncomplete,Quick Reference,yes,yes,,
+44,todos,reopen,basecamp reopen <id>,that todo isn't done yet — undo it,Casual reopen,Quick Reference,yes,yes,,
+# --- Bulk ---
+45,todos,sweep,basecamp todos sweep --overdue --complete --comment "Cleaned up" --in <project>,complete all overdue todos with a note,Bulk operation,Common Workflows,yes,yes,,
+46,todos,sweep-dryrun,basecamp todos sweep --overdue --complete --dry-run --in <project>,show me what a sweep of overdue todos would do,Preview bulk,Common Workflows,yes,no,,
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 3: CARDS — Kanban workflows
+# ═══════════════════════════════════════════════════════════════
+#
+50,cards,list,basecamp cards --in <project> --json,show me the cards,List cards,Quick Reference,yes,no,,
+51,cards,list,basecamp cards --in <project> --json,what's on the board?,Casual kanban query,Quick Reference,yes,no,,
+52,cards,columns,basecamp cards columns --in <project> --json,show the columns,List columns,Resource Reference,yes,no,,
+53,cards,columns,basecamp cards columns --in <project> --json,what are the stages on the board?,Casual column query,Resource Reference,yes,no,,
+54,cards,in-column,basecamp cards --column <id> --in <project> --json,show cards in the "In Progress" column,Filter by column,Resource Reference,yes,no,,
+55,cards,show,basecamp cards show <id> --in <project> --json,show me card <id>,Card detail,Resource Reference,yes,no,,
+56,cards,create,basecamp card --title "Design homepage" --in <project> --json,create a card for "Design homepage",Create card,Quick Reference,yes,yes,,
+57,cards,create-in-col,basecamp card --title "Fix bug" --column <id> --in <project> --json,add a card "Fix bug" to the In Progress column,Create in specific column,Resource Reference,yes,yes,,
+58,cards,move,basecamp cards move <id> --to <column_id> --in <project>,move card <id> to Done,Move card,Quick Reference,yes,yes,,
+59,cards,move-casual,basecamp cards move <id> --to <column_id> --in <project>,that card is done — move it over,Casual move,Quick Reference,yes,yes,,
+60,cards,steps,basecamp cards steps <card_id> --in <project>,show the checklist on card <id>,Card steps,Resource Reference,yes,no,,
+61,cards,step-complete,basecamp cards step complete <step_id> --in <project>,check off that step,Complete step,Resource Reference,yes,yes,,
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 4: MESSAGES — Communication
+# ═══════════════════════════════════════════════════════════════
+#
+70,messages,list,basecamp messages --in <project> --json,show messages in the project,List messages,Resource Reference,yes,no,,
+71,messages,list,basecamp messages --in <project> --json,what's been posted lately?,Casual message list,Resource Reference,yes,no,,
+72,messages,show,basecamp messages show <id> --in <project> --json,show me message <id>,Message detail,Resource Reference,yes,no,,
+73,messages,create,basecamp message --subject "Status Update" --content "All good" --in <project> --json,post a message titled "Status Update" saying "All good",Create message,Quick Reference,yes,yes,,
+74,messages,create-quiet,basecamp message --subject "FYI" --content "Note" --no-subscribe --in <project> --json,post a quiet message — don't notify anyone,Silent post,Quick Reference,yes,yes,,
+75,messages,create-casual,basecamp message --subject "Heads up" --content "Deploying at 3pm" --in <project> --json,let the team know we're deploying at 3pm,Casual message intent,Quick Reference,yes,yes,,
+76,messages,pin,basecamp messages pin <id> --in <project>,pin that message,Pin,Resource Reference,yes,yes,,
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 5: COMMENTS — Replying to things
+# ═══════════════════════════════════════════════════════════════
+#
+80,comments,create,basecamp comment <recording_id> "Looks good" --in <project> --json,comment "Looks good" on that todo,Add comment,Quick Reference,yes,yes,,
+81,comments,create-casual,basecamp comment <recording_id> "On it" --in <project> --json,reply "On it" to that message,Casual reply,Quick Reference,yes,yes,,
+82,comments,list,basecamp comments list <recording_id> -p <project> --json,show the comments on this,List comments,Resource Reference,yes,no,,
+83,comments,url-reply,"basecamp url parse ""<url>"" --json; then comment",reply to this basecamp link: <url>,URL parse + comment,URL Parsing + Comments,yes,yes,,
+84,comments,url-thread,"basecamp url parse ""<url>"" --json; then comment on parent","reply to this thread: <url>#__recording_<comment_id>",Must reply to parent not comment,Agent Invariants,yes,yes,,
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 6: CAMPFIRE — Chat
+# ═══════════════════════════════════════════════════════════════
+#
+90,campfire,list,basecamp campfire --in <project> --json,show campfires,List campfires,Resource Reference,yes,no,,
+91,campfire,messages,basecamp campfire messages --in <project> --json,show recent campfire chat,List messages,Resource Reference,yes,no,,
+92,campfire,post,basecamp campfire post --content "Hey team" --in <project>,say "Hey team" in campfire,Post message,Quick Reference,yes,yes,,
+93,campfire,post-casual,basecamp campfire post --content "Shipped it!" --in <project>,tell the team in campfire that we shipped it,Casual chat intent,Quick Reference,yes,yes,,
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 7: FILES & DOCS
+# ═══════════════════════════════════════════════════════════════
+#
+100,files,list,basecamp files --in <project> --json,show files in the project,List files,Resource Reference,yes,no,,
+101,files,list,basecamp files --in <project> --json,what documents do we have?,Casual files query,Resource Reference,yes,no,,
+102,files,download,basecamp files download <id> --in <project>,download file <id>,Download,Quick Reference,yes,no,,
+103,files,download-dir,basecamp files download <id> --in <project> --out ./downloads,download that file to my downloads folder,Download with destination,Resource Reference,yes,no,,
+104,files,folder,basecamp files --vault <folder_id> --in <project> --json,show what's in the "Assets" folder,Browse folder,Resource Reference,yes,no,,
+105,docs,create,basecamp files doc create --title "Meeting Notes" --content "..." --in <project> --json,create a document called "Meeting Notes",Create doc,Resource Reference,yes,yes,,
+106,docs,create-quiet,basecamp files doc create --title "Draft" --draft --no-subscribe --in <project> --json,create a draft document quietly,Draft + silent,Resource Reference,yes,yes,,
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 8: SCHEDULE
+# ═══════════════════════════════════════════════════════════════
+#
+110,schedule,list,basecamp schedule entries --in <project> --json,what's on the schedule?,List entries,Resource Reference,yes,no,,
+111,schedule,show,basecamp schedule show <id> --in <project> --json,show schedule entry <id>,Entry detail,Resource Reference,yes,no,,
+112,schedule,create,basecamp schedule create "Team Sync" --starts-at "2026-03-10T10:00:00Z" --ends-at "2026-03-10T11:00:00Z" --in <project>,schedule a "Team Sync" meeting for tomorrow 10-11am,Create entry,Resource Reference,yes,yes,,
+113,schedule,create-allday,basecamp schedule create "Launch Day" --all-day --in <project>,add "Launch Day" as an all-day event,All-day event,Resource Reference,yes,yes,,
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 9: CHECK-INS
+# ═══════════════════════════════════════════════════════════════
+#
+120,checkins,questions,basecamp checkins questions --in <project> --json,show the check-in questions,List questions,Resource Reference,yes,no,,
+121,checkins,answers,basecamp checkins answers <question_id> --in <project> --json,show answers to check-in <id>,List answers,Resource Reference,yes,no,,
+122,checkins,answer,basecamp checkins answer create --question <id> --content "Shipped the feature" --in <project>,answer the check-in: "Shipped the feature",Submit answer,Resource Reference,yes,yes,,
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 10: PEOPLE
+# ═══════════════════════════════════════════════════════════════
+#
+130,people,list-all,basecamp people list --json,who's in this basecamp account?,List all people,Resource Reference,yes,no,,
+131,people,list-project,basecamp people list --in <project> --json,who's on this project?,Project people,Resource Reference,yes,no,,
+132,people,show,basecamp people show <id> --json,show me info about <person>,Person detail,Resource Reference,yes,no,,
+133,people,add,basecamp people add <id> -p <project>,add Sarah to the project,Add to project,Resource Reference,yes,yes,,
+134,people,remove,basecamp people remove <id> -p <project>,remove <person> from the project,Remove from project,Resource Reference,yes,yes,,
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 11: SEARCH & DISCOVERY
+# ═══════════════════════════════════════════════════════════════
+#
+140,search,basic,basecamp search "deploy" --json,search for "deploy",Full-text search,Quick Reference,yes,no,,
+141,search,casual,basecamp search "homepage redesign" --json,find anything about the homepage redesign,Casual search,Quick Reference,yes,no,,
+142,search,find-todo,basecamp search "buy coffee" --json,find the todo about buying coffee,Search then act,Quick Reference,yes,no,,
+143,recordings,browse-todos,basecamp recordings todos --json,browse all todos across projects,Cross-project browse,Resource Reference,yes,no,,
+144,recordings,browse-messages,basecamp recordings messages --json,show recent messages across all projects,Cross-project browse,Resource Reference,yes,no,,
+145,recordings,archived,basecamp recordings cards --status archived --json,show archived cards,Status filter,Resource Reference,yes,no,,
+146,timeline,account,basecamp timeline --json,what happened recently?,Account timeline,Resource Reference,yes,no,,
+147,timeline,mine,basecamp timeline me --json,show my recent activity,Personal timeline,Resource Reference,yes,no,,
+148,timeline,project,basecamp timeline --in <project> --json,what's been happening in the project?,Project timeline,Resource Reference,yes,no,,
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 12: URL HANDLING
+# ═══════════════════════════════════════════════════════════════
+#
+150,url,parse-todo,basecamp url parse "https://3.basecamp.com/123/buckets/456/todos/789" --json,what is this basecamp link? <url>,Parse URL,URL Parsing,no,no,,
+151,url,parse-message,basecamp url parse "https://3.basecamp.com/123/buckets/456/messages/789" --json,open this: <message_url>,Parse URL,URL Parsing,no,no,,
+152,url,parse-comment,basecamp url parse "https://3.basecamp.com/123/buckets/456/messages/789#__recording_101" --json,what's this comment link? <url>,Parse with fragment,URL Parsing,no,no,,
+153,url,act-on,basecamp url parse + basecamp show,show me what's at this basecamp URL: <url>,Parse then show,URL Parsing,yes,no,,
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 13: SUBSCRIPTIONS & NOTIFICATIONS
+# ═══════════════════════════════════════════════════════════════
+#
+160,subscriptions,who,basecamp subscriptions <recording_id>,who's subscribed to this?,List subscribers,Resource Reference,yes,no,,
+161,subscriptions,subscribe,basecamp subscriptions subscribe <id>,subscribe me to this,Subscribe self,Resource Reference,yes,yes,,
+162,subscriptions,unsubscribe,basecamp subscriptions unsubscribe <id>,stop notifications for this,Unsubscribe,Resource Reference,yes,yes,,
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 14: TEMPLATES & WEBHOOKS & LINEUP
+# ═══════════════════════════════════════════════════════════════
+#
+170,templates,list,basecamp templates --json,show project templates,List templates,Resource Reference,yes,no,,
+171,templates,construct,basecamp templates construct <id> --name "Q2 Project",create a new project from the "Sprint" template,Construct from template,Resource Reference,yes,yes,,
+172,webhooks,list,basecamp webhooks --in <project> --json,show webhooks,List webhooks,Resource Reference,yes,no,,
+173,webhooks,create,basecamp webhooks create --url "https://example.com/hook" --in <project>,add a webhook for <url>,Create webhook,Resource Reference,yes,yes,,
+174,lineup,create,basecamp lineup create "Launch" "2026-04-01",add a lineup marker for launch on April 1st,Create marker,Resource Reference,yes,yes,,
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 15: ASSIGN / REACT / BOOST
+# ═══════════════════════════════════════════════════════════════
+#
+180,assign,self,basecamp assign <id> --to me --in <project>,assign that to me,Assign to self,Quick Reference,yes,yes,,
+181,assign,other,basecamp assign <id> --to <person> --in <project>,assign that to Sarah,Assign to someone,Quick Reference,yes,yes,,
+182,unassign,self,basecamp unassign <id> --from me --in <project>,unassign me from that,Remove assignment,Quick Reference,yes,yes,,
+183,react,boost,basecamp react "👍" --on <id> --in <project>,give that a 👍,Boost a recording,Quick Reference,yes,yes,,
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 16: OUTPUT VARIATIONS — Same query different formats
+# ═══════════════════════════════════════════════════════════════
+#
+190,output,json,basecamp projects --json,list projects as JSON,JSON output,Output Modes,yes,no,,
+191,output,markdown,basecamp projects --md,show projects in markdown,Markdown output,Output Modes,yes,no,,
+192,output,quiet,basecamp projects --quiet,just the raw data for projects,Quiet/raw output,Output Modes,yes,no,,
+193,output,count,basecamp todos --in <project> --count,how many todos are there?,Count only,Output Modes,yes,no,,
+194,output,ids-only,basecamp todos --in <project> --ids-only,just give me the todo IDs,IDs only,Output Modes,yes,no,,
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 17: AMBIGUOUS / VAGUE QUERIES — Real-world messiness
+# ═══════════════════════════════════════════════════════════════
+#
+200,ambiguous,no-project,basecamp todos --json (needs --in or config),show me todos,"Should check config or ask for project, not error silently",Agent Invariants,yes,no,,
+201,ambiguous,no-project,basecamp reports assigned --json,what should I be doing?,Should use reports assigned (cross-project),Decision Trees,yes,no,,
+202,ambiguous,wrong-scope,basecamp recordings todos --json vs basecamp reports assigned --json,show me all my todos everywhere,Should use reports assigned not recordings (recordings has no assignee data),Decision Trees,yes,no,,
+203,ambiguous,type-confusion,basecamp cards --in <project> --json,show me tasks on the board,"User says ""tasks"" but means cards/kanban",Quick Reference,yes,no,,
+204,ambiguous,type-confusion,basecamp todos --in <project> --json,show me tasks,"User says ""tasks"" — could mean todos or cards, should clarify or default to todos",Quick Reference,yes,no,,
+205,ambiguous,plural-singular,basecamp message --subject "Hi" --content "Hey" --in <project>,write a message to the team,Singular intent = create,Quick Reference,yes,yes,,
+206,ambiguous,action-unclear,basecamp todos --in <project> --json OR search,what about that deploy todo?,"Vague reference — search or list+filter?",Quick Reference,yes,no,,
+207,ambiguous,implicit-project,basecamp todos --in <project> --json (from config),todos,"Bare word — should use configured project",Agent Invariants,yes,no,,
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 18: MULTI-STEP WORKFLOWS — Chained operations
+# ═══════════════════════════════════════════════════════════════
+#
+210,workflow,create-and-assign,"todo --content + assign --to me",create a todo and assign it to me,Two-step or combined flags,Common Workflows,yes,yes,,
+211,workflow,find-and-complete,"search + done",find the coffee todo and mark it done,Search then complete,Common Workflows,yes,yes,,
+212,workflow,summarize-timeline,"timeline --json + interpret",give me a summary of what happened today,Fetch + synthesize,Common Workflows,yes,no,,
+213,workflow,reply-to-url,"url parse + comment",reply to this basecamp link with "Thanks!",Parse URL then comment,Common Workflows,yes,yes,,
+214,workflow,create-todo-from-url,"url parse + todo create",create a todo to follow up on this message: <url>,Parse URL context then create,Common Workflows,yes,yes,,
+215,workflow,standup,"reports assigned + todos --overdue",what should I report in standup?,Combine assigned + overdue,Common Workflows,yes,no,,
+216,workflow,handoff,"assign + comment",hand this off to Sarah with a note saying "your turn",Assign + comment,Common Workflows,yes,yes,,
+217,workflow,cleanup,"todos sweep --overdue --complete --comment",clean up all the overdue todos in the project,Bulk complete with comment,Common Workflows,yes,yes,,
+218,workflow,project-overview,"projects show + todos + cards + timeline","give me an overview of project <name>",Multi-resource summary,Common Workflows,yes,no,,
+219,workflow,move-and-comment,"cards move + comment",move the card to Done and add a comment "Shipped",Move then comment,Common Workflows,yes,yes,,
+220,workflow,end-of-day,"timeline me + todos --assignee me","what did I do today and what's still open?",Personal review,Common Workflows,yes,no,,
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 19: ERROR RECOVERY — What happens when things go wrong
+# ═══════════════════════════════════════════════════════════════
+#
+230,errors,not-found,basecamp todos show 999999 --in <project> --json,show todo 999999,Should handle not-found gracefully,Error Handling,yes,no,,
+231,errors,no-auth,basecamp projects --json (when logged out),list my projects (unauthenticated),Should suggest basecamp auth login,Error Handling,no,no,,
+232,errors,ambiguous-table,basecamp cards --in <project-with-multiple-tables> --json,show me the cards,Should ask which card table or show hint,Resource Reference,yes,no,,
+233,errors,wrong-id,basecamp comment 0 "test" --in <project>,comment on recording 0,Should handle invalid ID,Error Handling,yes,yes,,
+#
+# ═══════════════════════════════════════════════════════════════
+# SECTION 20: EDGE CASES — Tricky but real
+# ═══════════════════════════════════════════════════════════════
+#
+240,edge,special-chars,basecamp todo --content "Fix the ""quotes"" issue" --in <project> --json,add a todo: fix the "quotes" issue,Special characters in content,Quick Reference,yes,yes,,
+241,edge,markdown-content,basecamp message --subject "Update" --content "## Heading\n- item 1\n- item 2" --in <project> --json,post a message with markdown formatting,Rich text / markdown,Agent Invariants,yes,yes,,
+242,edge,multiple-done,basecamp done <id1> <id2> <id3>,mark todos 1 2 and 3 as done,Batch complete,Quick Reference,yes,yes,,
+243,edge,natural-date,basecamp todo --content "Review" --due "next wednesday" --in <project> --json,create a todo due next wednesday,Natural date parsing,Smart Defaults,yes,yes,,
+244,edge,name-resolution,basecamp todos --assignee "Sarah" --in <project> --json,show Sarah's todos,Name resolution (not ID),Smart Defaults,yes,no,,
+245,edge,project-by-name,basecamp todos --in "Marketing" --json,show todos in the Marketing project,Project name resolution,Smart Defaults,yes,no,,
