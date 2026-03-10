@@ -101,11 +101,11 @@ func TestSchemaViews(t *testing.T) {
 		t.Fatal("Expected todo schema")
 	}
 
-	if len(schema.Views.List.Columns) != 4 {
-		t.Errorf("List columns = %d, want 4", len(schema.Views.List.Columns))
+	if len(schema.Views.List.Columns) != 5 {
+		t.Errorf("List columns = %d, want 5", len(schema.Views.List.Columns))
 	}
-	if schema.Views.List.Columns[0] != "content" {
-		t.Errorf("First list column = %q, want %q", schema.Views.List.Columns[0], "content")
+	if schema.Views.List.Columns[0] != "id" {
+		t.Errorf("First list column = %q, want %q", schema.Views.List.Columns[0], "id")
 	}
 
 	if len(schema.Views.Detail.Sections) != 3 {
@@ -530,8 +530,8 @@ func TestRenderListTodosNoPaddingOnContent(t *testing.T) {
 	}
 
 	data := []map[string]any{
-		{"content": "Short", "completed": false, "due_on": "", "assignees": []any{}},
-		{"content": "A much longer todo item name here", "completed": true, "due_on": "", "assignees": []any{}},
+		{"id": float64(1), "content": "Short", "completed": false, "due_on": "", "assignees": []any{}},
+		{"id": float64(2), "content": "A much longer todo item name here", "completed": true, "due_on": "", "assignees": []any{}},
 	}
 
 	styles := NewStyles(tui.NoColorTheme(), false)
@@ -548,8 +548,8 @@ func TestRenderListTodosNoPaddingOnContent(t *testing.T) {
 
 	// Content (title role) should have a two-space column separator after the
 	// value, NOT be padded to the max content width (34 chars).
-	assert.True(t, strings.HasPrefix(lines[0], "Short  "), "expected two-space separator after Short, got: %q", lines[0])
-	assert.False(t, strings.HasPrefix(lines[0], "Short   "), "content should not be padded beyond two-space separator, got: %q", lines[0])
+	assert.Contains(t, lines[0], "Short  ", "expected two-space separator after Short, got: %q", lines[0])
+	assert.NotContains(t, lines[0], "Short   ", "content should not be padded beyond two-space separator, got: %q", lines[0])
 }
 
 // =============================================================================

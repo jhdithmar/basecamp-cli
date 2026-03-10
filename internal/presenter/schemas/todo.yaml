@@ -53,7 +53,7 @@ fields:
 
 views:
   list:
-    columns: [content, completed, due_on, assignees]
+    columns: [id, content, completed, due_on, assignees]
     markdown:
       style: tasklist
       group_by: bucket.name

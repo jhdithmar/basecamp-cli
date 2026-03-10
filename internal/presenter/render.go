@@ -560,14 +560,16 @@ func renderTaskItem(b *strings.Builder, schema *EntitySchema, item map[string]an
 			continue
 		}
 
-		switch spec.Format {
-		case "date":
+		switch {
+		case col == "id":
+			meta = append(meta, "#"+formatted)
+		case spec.Format == "date":
 			if col == "due_on" {
 				meta = append(meta, "due: "+formatted)
 			} else {
 				meta = append(meta, fieldLabel(col)+": "+formatted)
 			}
-		case "people":
+		case spec.Format == "people":
 			for _, name := range extractPeopleNames(val) {
 				meta = append(meta, "@"+name)
 			}
