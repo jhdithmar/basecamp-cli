@@ -3,17 +3,15 @@ kind: recording
 type_key: "Comment"
 
 identity:
-  label: content
   id: id
 
 headline:
   default:
-    template: "{{.content}}"
+    template: ""
 
 fields:
   content:
-    role: title
-    emphasis: primary
+    role: body
     format: text
 
   creator:

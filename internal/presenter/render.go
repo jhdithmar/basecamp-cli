@@ -209,9 +209,16 @@ func renderDetailSection(b *strings.Builder, schema *EntitySchema, section Detai
 		}
 
 		if spec.Role == "body" {
-			b.WriteString("\n")
-			b.WriteString(style.Render("  " + formatted))
-			b.WriteString("\n")
+			// Render each line individually to prevent lipgloss from
+			// padding blank lines to the width of the longest line.
+			for _, line := range strings.Split(strings.TrimRight(formatted, "\n"), "\n") {
+				if line == "" {
+					b.WriteString("\n")
+				} else {
+					b.WriteString(style.Render(line))
+					b.WriteString("\n")
+				}
+			}
 			continue
 		}
 
@@ -263,8 +270,14 @@ func renderAllFields(b *strings.Builder, schema *EntitySchema, data map[string]a
 
 			if spec.Role == "body" {
 				b.WriteString("\n")
-				b.WriteString(style.Render("  " + formatted))
-				b.WriteString("\n")
+				for _, line := range strings.Split(strings.TrimRight(formatted, "\n"), "\n") {
+					if line == "" {
+						b.WriteString("\n")
+					} else {
+						b.WriteString(style.Render(line))
+						b.WriteString("\n")
+					}
+				}
 			} else {
 				label := fieldLabel(name)
 				b.WriteString(styles.Label.Render(fmt.Sprintf("  %-12s  ", label)))
