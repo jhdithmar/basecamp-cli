@@ -307,9 +307,16 @@ func filterInheritedFlags(cmd *cobra.Command) string {
 	root := cmd.Root()
 	filtered := pflag.NewFlagSet("inherited", pflag.ContinueOnError)
 
+	// Commands that accept <id|url> resolve the project from the ID
+	// automatically, so --project is noise in their help output.
+	acceptsID := strings.Contains(cmd.Use, "<id|url>")
+
 	cmd.InheritedFlags().VisitAll(func(f *pflag.Flag) {
 		rootFlag := root.PersistentFlags().Lookup(f.Name)
 		if rootFlag != nil && rootFlag == f && !salientRootFlags[f.Name] {
+			return
+		}
+		if acceptsID && f.Name == "project" && rootFlag == f {
 			return
 		}
 		filtered.AddFlag(f)
