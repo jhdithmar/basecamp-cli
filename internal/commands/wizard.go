@@ -74,6 +74,13 @@ func runWizard(cmd *cobra.Command, app *appctx.App) error {
 
 	// Fetch account name for display
 	result.AccountName = fetchAccountName(cmd, app, accountID)
+	w := cmd.OutOrStdout()
+	if result.AccountName != "" {
+		fmt.Fprintln(w, styles.Success.Render(fmt.Sprintf("  Selected account: %s", result.AccountName)))
+	} else {
+		fmt.Fprintln(w, styles.Success.Render(fmt.Sprintf("  Selected account: #%s", accountID)))
+	}
+	fmt.Fprintln(w)
 
 	// Step 4: Project selection (optional)
 	projectID, err := wizardProject(cmd, app, styles)
