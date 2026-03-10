@@ -108,6 +108,7 @@ func runCommentsList(cmd *cobra.Command, recordingID string, limit, page int, al
 
 	// Build response options
 	respOpts := []output.ResponseOption{
+		output.WithEntity("comment"),
 		output.WithSummary(fmt.Sprintf("%d comments on #%s", len(comments), recordingID)),
 		output.WithBreadcrumbs(
 			output.Breadcrumb{
@@ -167,6 +168,7 @@ You can pass either a comment ID or a Basecamp URL:
 			}
 
 			return app.OK(comment,
+				output.WithEntity("comment"),
 				output.WithSummary(fmt.Sprintf("Comment #%s by %s", commentIDStr, creatorName)),
 				output.WithBreadcrumbs(
 					output.Breadcrumb{
@@ -224,6 +226,7 @@ You can pass either a comment ID or a Basecamp URL:
 			}
 
 			return app.OK(comment,
+				output.WithEntity("comment"),
 				output.WithSummary(fmt.Sprintf("Updated comment #%s", commentIDStr)),
 				output.WithBreadcrumbs(
 					output.Breadcrumb{
@@ -376,6 +379,7 @@ Supports batch commenting on multiple items at once.`,
 			// Single comment: return the comment object directly
 			if len(commented) == 1 && len(failed) == 0 && lastComment != nil {
 				return app.OK(lastComment,
+					output.WithEntity("comment"),
 					output.WithSummary(fmt.Sprintf("Commented on #%s", commented[0])),
 				)
 			}

@@ -1,0 +1,35 @@
+entity: comment
+kind: recording
+type_key: "Comment"
+
+identity:
+  label: content
+  id: id
+
+headline:
+  default:
+    template: "{{.content}}"
+
+fields:
+  content:
+    role: title
+    emphasis: primary
+    format: text
+
+  created_at:
+    role: meta
+    emphasis: muted
+    format: relative_time
+
+  id:
+    role: meta
+    emphasis: muted
+
+views:
+  list:
+    columns: [content, created_at]
+  detail:
+    sections:
+      - fields: [content]
+      - heading: Metadata
+        fields: [id, created_at]
