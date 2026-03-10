@@ -257,7 +257,10 @@ func newCommentsCreateCmd() *cobra.Command {
 		Long: `Add a comment to a Basecamp item (todo, message, card, etc.)
 
 The first argument is the item ID or URL to comment on.
-Supports batch commenting with comma-separated IDs.`,
+Comma-separated IDs add the same comment to multiple items:
+  basecamp comment 789 "Looks good!"
+  basecamp comment 789,012,345 "Looks good!"
+  basecamp comment https://3.basecamp.com/123/buckets/456/todos/789 "Looks good!"`,
 		Annotations: map[string]string{"agent_notes": "Comments are flat — reply to parent item, not to other comments\nURL fragments (#__recording_456) are comment IDs — comment on the parent recording_id, not the comment_id\nComments are on items (todos, messages, cards, etc.) — not on other comments"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())

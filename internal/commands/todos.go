@@ -711,8 +711,10 @@ func newTodosCompleteCmd() *cobra.Command {
 		Short: "Complete todo(s)",
 		Long: `Mark one or more todos as completed.
 
-You can pass either todo IDs or Basecamp URLs:
+You can pass todo IDs, Basecamp URLs, or comma-separated IDs:
   basecamp todos complete 789
+  basecamp todos complete 789 012 345
+  basecamp todos complete 789,012,345
   basecamp todos complete https://3.basecamp.com/123/buckets/456/todos/789`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
@@ -731,8 +733,10 @@ func newDoneCmd() *cobra.Command {
 		Short: "Complete todo(s)",
 		Long: `Mark one or more todos as completed.
 
-You can pass either todo IDs or Basecamp URLs:
+You can pass todo IDs, Basecamp URLs, or comma-separated IDs:
   basecamp done 789
+  basecamp done 789 012 345
+  basecamp done 789,012,345
   basecamp done https://3.basecamp.com/123/buckets/456/todos/789`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
@@ -818,8 +822,10 @@ func newTodosUncompleteCmd() *cobra.Command {
 		Short:   "Reopen todo(s)",
 		Long: `Reopen one or more completed todos.
 
-You can pass either todo IDs or Basecamp URLs:
+You can pass todo IDs, Basecamp URLs, or comma-separated IDs:
   basecamp todos uncomplete 789
+  basecamp todos uncomplete 789 012 345
+  basecamp todos uncomplete 789,012,345
   basecamp todos uncomplete https://3.basecamp.com/123/buckets/456/todos/789`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
@@ -1102,8 +1108,10 @@ func newReopenCmd() *cobra.Command {
 		Short: "Reopen todo(s)",
 		Long: `Reopen one or more completed todos.
 
-You can pass either todo IDs or Basecamp URLs:
+You can pass todo IDs, Basecamp URLs, or comma-separated IDs:
   basecamp reopen 789
+  basecamp reopen 789 012 345
+  basecamp reopen 789,012,345
   basecamp reopen https://3.basecamp.com/123/buckets/456/todos/789`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
