@@ -170,8 +170,8 @@ func TestCardsStepCreateRequiresCard(t *testing.T) {
 	project := ""
 	cmd := newCardsStepCreateCmd(&project)
 
-	// Only title flag, no card
-	err := executeCommand(cmd, app, "--title", "My step")
+	// Title as positional arg, no --card flag
+	err := executeCommand(cmd, app, "My step")
 	require.NotNil(t, err, "expected error, got nil")
 
 	var e *output.Error
@@ -187,13 +187,8 @@ func TestCardsStepUpdateRequiresFields(t *testing.T) {
 
 	cmd := newCardsStepUpdateCmd()
 
-	err := executeCommand(cmd, app, "456") // step ID but no update fields
-	require.NotNil(t, err, "expected error, got nil")
-
-	var e *output.Error
-	if assert.True(t, errors.As(err, &e), "expected *output.Error, got %T: %v", err, err) {
-		assert.Equal(t, "No update fields provided", e.Message)
-	}
+	err := executeCommand(cmd, app, "456") // step ID but no update fields — shows help
+	assert.NoError(t, err, "expected help output, not error")
 }
 
 // TestCardsStepMoveRequiresCard tests that --card is required for step move.
@@ -271,20 +266,15 @@ func TestCardsColumnCreateShowsHelpWithoutTitle(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestCardsColumnUpdateRequiresFields tests that at least one field is required for column update.
-func TestCardsColumnUpdateRequiresFields(t *testing.T) {
+// TestCardsColumnUpdateShowsHelpWithNoFlags tests that column update with no flags shows help.
+func TestCardsColumnUpdateShowsHelpWithNoFlags(t *testing.T) {
 	app, _ := setupTestApp(t)
 	app.Config.ProjectID = "123"
 
 	cmd := newCardsColumnUpdateCmd()
 
-	err := executeCommand(cmd, app, "456") // column ID but no update fields
-	require.NotNil(t, err, "expected error, got nil")
-
-	var e *output.Error
-	if assert.True(t, errors.As(err, &e), "expected *output.Error, got %T: %v", err, err) {
-		assert.Equal(t, "No update fields provided", e.Message)
-	}
+	err := executeCommand(cmd, app, "456") // column ID but no update fields shows help
+	assert.NoError(t, err)
 }
 
 // TestCardsColumnMoveRequiresPosition tests that --position is required for column move.
@@ -665,20 +655,16 @@ func TestCardsCreateShowsHelpWithoutTitle(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestCardsUpdateRequiresCardID tests that card ID is required for update.
-// Cobra validates args count, so we get a Cobra error.
-func TestCardsUpdateRequiresCardID(t *testing.T) {
+// TestCardsUpdateShowsHelpWithNoFlags tests that update with no flags shows help.
+func TestCardsUpdateShowsHelpWithNoFlags(t *testing.T) {
 	app, _ := setupTestApp(t)
 	app.Config.ProjectID = "123"
 
 	cmd := NewCardsCmd()
 
-	// Update with fields but no card ID
-	err := executeCommand(cmd, app, "update", "--title", "New Title")
-	require.NotNil(t, err, "expected error, got nil")
-
-	// Cobra validates args count first
-	assert.Equal(t, "accepts 1 arg(s), received 0", err.Error())
+	// Update with card ID but no flags shows help (returns nil)
+	err := executeCommand(cmd, app, "update", "12345")
+	assert.NoError(t, err)
 }
 
 // TestCardsUpdateRequiresFields tests that at least one field is required for update.
@@ -736,7 +722,7 @@ func TestCardShortcutRequiresProject(t *testing.T) {
 
 	cmd := NewCardCmd()
 
-	err := executeCommand(cmd, app, "--title", "Test Card")
+	err := executeCommand(cmd, app, "TestCard")
 	require.NotNil(t, err, "expected error, got nil")
 
 	var e *output.Error

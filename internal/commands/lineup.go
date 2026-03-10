@@ -41,15 +41,12 @@ They apply to the entire Basecamp account.`,
 }
 
 func newLineupCreateCmd() *cobra.Command {
-	var name string
-	var date string
-
 	cmd := &cobra.Command{
 		Use:   "create [name] [date]",
 		Short: "Create a new lineup marker",
 		Long: `Create a new lineup marker with a name and date.
 
-The --date flag accepts natural language dates:
+The date accepts natural language dates:
 - Relative: today, tomorrow, +3, in 5 days
 - Weekdays: monday, next friday
 - Explicit: 2024-03-15 (YYYY-MM-DD)`,
@@ -61,11 +58,12 @@ The --date flag accepts natural language dates:
 				return err
 			}
 
-			// Name and date from positional args or flags
-			if len(args) > 0 && name == "" {
+			name := ""
+			date := ""
+			if len(args) > 0 {
 				name = args[0]
 			}
-			if len(args) > 1 && date == "" {
+			if len(args) > 1 {
 				date = args[1]
 			}
 
@@ -111,30 +109,28 @@ The --date flag accepts natural language dates:
 		},
 	}
 
-	cmd.Flags().StringVarP(&name, "name", "n", "", "Marker name")
-	cmd.Flags().StringVarP(&date, "date", "d", "", "Marker date (YYYY-MM-DD or natural language)")
-
 	return cmd
 }
 
 func newLineupUpdateCmd() *cobra.Command {
-	var name string
-	var date string
-
 	cmd := &cobra.Command{
-		Use:   "update <id|url>",
+		Use:   "update <id|url> [name] [date]",
 		Short: "Update a lineup marker",
 		Long: `Update an existing lineup marker's name or date.
 
 You can pass either a marker ID or a Basecamp URL:
-  basecamp lineup update 789 --name "new name"
-  basecamp lineup update https://3.basecamp.com/123/my/lineup/markers/789`,
-		Args: cobra.ExactArgs(1),
+  basecamp lineup update 789 "new name"
+  basecamp lineup update 789 "new name" 2024-03-15`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
 
 			if err := ensureAccount(cmd, app); err != nil {
 				return err
+			}
+
+			// Show help when invoked with no arguments
+			if len(args) == 0 {
+				return cmd.Help()
 			}
 
 			markerIDStr := extractID(args[0])
@@ -143,8 +139,18 @@ You can pass either a marker ID or a Basecamp URL:
 				return output.ErrUsage("Invalid marker ID")
 			}
 
+			name := ""
+			date := ""
+			if len(args) > 1 {
+				name = args[1]
+			}
+			if len(args) > 2 {
+				date = args[2]
+			}
+
+			// Show help when no update fields provided
 			if name == "" && date == "" {
-				return output.ErrUsage("Provide --name and/or --date to update")
+				return cmd.Help()
 			}
 
 			req := &basecamp.UpdateMarkerRequest{}
@@ -189,9 +195,6 @@ You can pass either a marker ID or a Basecamp URL:
 			)
 		},
 	}
-
-	cmd.Flags().StringVarP(&name, "name", "n", "", "New name")
-	cmd.Flags().StringVarP(&date, "date", "d", "", "New date (YYYY-MM-DD or natural language)")
 
 	return cmd
 }

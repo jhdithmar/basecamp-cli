@@ -582,7 +582,7 @@ func TestTodolistsCreateMultiTodosetAmbiguousError(t *testing.T) {
 	app := setupMultiTodosetApp(t)
 
 	cmd := NewTodolistsCmd()
-	err := executeTodosCommand(cmd, app, "create", "--name", "Test List")
+	err := executeTodosCommand(cmd, app, "create", "Test List")
 	require.Error(t, err)
 
 	var e *output.Error

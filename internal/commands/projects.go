@@ -27,7 +27,7 @@ func NewProjectsCmd() *cobra.Command {
 		Example: `  $ basecamp projects list
   $ basecamp projects list --status archived
   $ basecamp projects show 12345
-  $ basecamp projects create --name "New project"`,
+  $ basecamp projects create "New project"`,
 	}
 
 	cmd.AddCommand(
@@ -141,7 +141,7 @@ func runProjectsList(cmd *cobra.Command, status string, limit, page int, all boo
 			},
 			output.Breadcrumb{
 				Action:      "create",
-				Cmd:         "basecamp projects create --name <name>",
+				Cmd:         "basecamp projects create <name>",
 				Description: "Create a new project",
 			},
 		),
@@ -219,11 +219,10 @@ func newProjectsShowCmd() *cobra.Command {
 }
 
 func newProjectsCreateCmd() *cobra.Command {
-	var name string
 	var description string
 
 	cmd := &cobra.Command{
-		Use:   "create",
+		Use:   "create <name>",
 		Short: "Create a new project",
 		Long:  "Create a new Basecamp project.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -238,9 +237,11 @@ func newProjectsCreateCmd() *cobra.Command {
 			}
 
 			// Show help when invoked with no arguments
-			if name == "" {
+			if len(args) == 0 {
 				return cmd.Help()
 			}
+
+			name := args[0]
 
 			req := &basecamp.CreateProjectRequest{
 				Name:        name,
@@ -259,7 +260,6 @@ func newProjectsCreateCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&name, "name", "n", "", "Project name (required)")
 	cmd.Flags().StringVarP(&description, "description", "d", "", "Project description")
 
 	return cmd
@@ -272,9 +272,17 @@ func newProjectsUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <id>",
 		Short: "Update a project",
-		Long:  "Update an existing project's name or description.",
-		Args:  cobra.ExactArgs(1),
+		Long: `Update an existing project's name or description.
+
+Examples:
+  basecamp projects update 12345 --name "New Name"
+  basecamp projects update 12345 --description "New description"`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if name == "" && description == "" {
+				return cmd.Help()
+			}
+
 			app := appctx.FromContext(cmd.Context())
 			if app == nil {
 				return fmt.Errorf("app not initialized")
@@ -288,11 +296,6 @@ func newProjectsUpdateCmd() *cobra.Command {
 			projectID, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil {
 				return output.ErrUsage("Invalid project ID")
-			}
-
-			// Show help when invoked with no flags
-			if name == "" && description == "" {
-				return cmd.Help()
 			}
 
 			// For update, we need to provide name (required by SDK)
@@ -324,8 +327,8 @@ func newProjectsUpdateCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&name, "name", "n", "", "New project name")
-	cmd.Flags().StringVarP(&description, "description", "d", "", "New project description")
+	cmd.Flags().StringVarP(&name, "name", "n", "", "New name")
+	cmd.Flags().StringVarP(&description, "description", "d", "", "New description")
 
 	return cmd
 }

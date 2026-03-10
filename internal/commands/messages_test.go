@@ -162,7 +162,7 @@ func TestMessagesUnpinRequiresID(t *testing.T) {
 	assert.Equal(t, "accepts 1 arg(s), received 0", err.Error())
 }
 
-// TestMessagesUpdateRequiresID tests that messages update requires an ID argument.
+// TestMessagesUpdateRequiresID tests that messages update errors when no ID is given.
 func TestMessagesUpdateRequiresID(t *testing.T) {
 	app, _ := setupMessagesTestApp(t)
 	app.Config.ProjectID = "123"
@@ -170,9 +170,7 @@ func TestMessagesUpdateRequiresID(t *testing.T) {
 	cmd := NewMessagesCmd()
 
 	err := executeMessagesCommand(cmd, app, "update")
-	require.Error(t, err)
-
-	assert.Equal(t, "accepts 1 arg(s), received 0", err.Error())
+	assert.Error(t, err)
 }
 
 // TestMessagesUpdateRequiresContent tests that messages update requires --subject or --content.
@@ -284,7 +282,7 @@ func TestMessagesCreateSubscribeMutualExclusion(t *testing.T) {
 
 	cmd := NewMessagesCmd()
 
-	err := executeMessagesCommand(cmd, app, "create", "--subject", "Test", "--subscribe", "me", "--no-subscribe")
+	err := executeMessagesCommand(cmd, app, "create", "Test", "--subscribe", "me", "--no-subscribe")
 	require.Error(t, err)
 
 	var e *output.Error
@@ -314,7 +312,7 @@ func TestMessagesCreateSubscribeEmptyIsError(t *testing.T) {
 
 	cmd := NewMessagesCmd()
 
-	err := executeMessagesCommand(cmd, app, "create", "--subject", "Test", "--subscribe", "")
+	err := executeMessagesCommand(cmd, app, "create", "Test", "--subscribe", "")
 	require.Error(t, err)
 
 	var e *output.Error
@@ -418,7 +416,7 @@ func TestMessagesCreateNoSubscribeSendsEmptyList(t *testing.T) {
 
 	cmd := NewMessagesCmd()
 
-	err := executeMessagesCommand(cmd, app, "create", "--subject", "Bot log", "--no-subscribe")
+	err := executeMessagesCommand(cmd, app, "create", "Bot log", "--no-subscribe")
 	require.NoError(t, err, "command should succeed with mock transport")
 	require.NotEmpty(t, transport.capturedBody, "expected request body to be captured")
 
@@ -441,7 +439,7 @@ func TestMessagesCreateDefaultOmitsSubscriptions(t *testing.T) {
 
 	cmd := NewMessagesCmd()
 
-	err := executeMessagesCommand(cmd, app, "create", "--subject", "Normal post")
+	err := executeMessagesCommand(cmd, app, "create", "Normal post")
 	require.NoError(t, err, "command should succeed with mock transport")
 	require.NotEmpty(t, transport.capturedBody, "expected request body to be captured")
 

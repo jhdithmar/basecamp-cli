@@ -315,13 +315,12 @@ func runCheckinsQuestionShow(cmd *cobra.Command, project, questionIDStr string) 
 
 func newCheckinsQuestionCreateCmd(project *string) *cobra.Command {
 	var questionnaireID string
-	var title string
 	var frequency string
 	var timeOfDay string
 	var days string
 
 	cmd := &cobra.Command{
-		Use:   "create",
+		Use:   "create <title>",
 		Short: "Create a new check-in question",
 		Long: `Create a new check-in question.
 
@@ -335,9 +334,11 @@ Days format: comma-separated (0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat)`,
 			}
 
 			// Show help when invoked with no arguments
-			if title == "" {
+			if len(args) == 0 {
 				return cmd.Help()
 			}
+
+			title := args[0]
 
 			// Resolve project, with interactive fallback
 			projectID := *project
@@ -439,7 +440,6 @@ Days format: comma-separated (0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat)`,
 	}
 
 	cmd.Flags().StringVar(&questionnaireID, "questionnaire", "", "Questionnaire ID (auto-detected)")
-	cmd.Flags().StringVarP(&title, "title", "t", "", "Question text (required)")
 	cmd.Flags().StringVarP(&frequency, "frequency", "f", "", "Schedule frequency (default: every_day)")
 	cmd.Flags().StringVar(&timeOfDay, "time", "", "Time to ask (default: 5:00pm)")
 	cmd.Flags().StringVarP(&days, "days", "d", "", "Days to ask, comma-separated (default: 1,2,3,4,5)")
@@ -448,20 +448,18 @@ Days format: comma-separated (0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat)`,
 }
 
 func newCheckinsQuestionUpdateCmd(project *string) *cobra.Command {
-	var title string
 	var frequency string
 	var timeOfDay string
 	var days string
 
 	cmd := &cobra.Command{
-		Use:   "update <id|url>",
+		Use:   "update <id|url> [title]",
 		Short: "Update a check-in question",
 		Long: `Update a check-in question's title or schedule.
 
 You can pass either a question ID or a Basecamp URL:
-  basecamp checkins question update 789 --title "new question" --in my-project
-  basecamp checkins question update https://3.basecamp.com/123/buckets/456/questionnaires/questions/789 --title "new question"`,
-		Args: cobra.ExactArgs(1),
+  basecamp checkins question update 789 "new question" --in my-project
+  basecamp checkins question update 789 --frequency every_week --in my-project`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
 
@@ -469,8 +467,18 @@ You can pass either a question ID or a Basecamp URL:
 				return err
 			}
 
+			// Show help when invoked with no arguments
+			if len(args) == 0 {
+				return cmd.Help()
+			}
+
 			// Extract ID and project from URL if provided
 			questionIDStr, urlProjectID := extractWithProject(args[0])
+
+			title := ""
+			if len(args) > 1 {
+				title = args[1]
+			}
 
 			// Resolve project - use URL > flag > config, with interactive fallback
 			projectID := *project
@@ -560,7 +568,6 @@ You can pass either a question ID or a Basecamp URL:
 		},
 	}
 
-	cmd.Flags().StringVarP(&title, "title", "t", "", "New question text")
 	cmd.Flags().StringVarP(&frequency, "frequency", "f", "", "New schedule frequency")
 	cmd.Flags().StringVar(&timeOfDay, "time", "", "New time to ask")
 	cmd.Flags().StringVarP(&days, "days", "d", "", "New days to ask")
@@ -789,11 +796,10 @@ func runCheckinsAnswerShow(cmd *cobra.Command, project, answerIDStr string) erro
 
 func newCheckinsAnswerCreateCmd(project *string) *cobra.Command {
 	var questionID string
-	var content string
 	var groupOn string
 
 	cmd := &cobra.Command{
-		Use:   "create",
+		Use:   "create <content>",
 		Short: "Create an answer to a question",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
@@ -802,17 +808,16 @@ func newCheckinsAnswerCreateCmd(project *string) *cobra.Command {
 				return err
 			}
 
-			// Allow question ID as positional arg
-			if questionID == "" && len(args) > 0 {
-				questionID = args[0]
-			}
-
 			// Show help when invoked with no arguments
-			if questionID == "" {
+			if len(args) == 0 {
 				return cmd.Help()
 			}
-			if content == "" {
-				return output.ErrUsage("--content is required")
+
+			content := strings.Join(args, " ")
+
+			// Show help when no question specified
+			if questionID == "" {
+				return output.ErrUsage("--question is required")
 			}
 
 			// Resolve project, with interactive fallback
@@ -874,25 +879,19 @@ func newCheckinsAnswerCreateCmd(project *string) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&questionID, "question", "", "Question ID to answer (required)")
-	cmd.Flags().StringVarP(&content, "content", "c", "", "Answer content (required)")
 	cmd.Flags().StringVar(&groupOn, "date", "", "Date to group answer (ISO 8601, e.g., 2024-01-22)")
-	_ = cmd.MarkFlagRequired("content")
 
 	return cmd
 }
 
 func newCheckinsAnswerUpdateCmd(project *string) *cobra.Command {
-	var content string
-
 	cmd := &cobra.Command{
-		Use:   "update <id|url>",
+		Use:   "update <id|url> [content]",
 		Short: "Update an answer",
 		Long: `Update an existing check-in answer.
 
 You can pass either an answer ID or a Basecamp URL:
-  basecamp checkins answer update 789 --content "updated answer" --in my-project
-  basecamp checkins answer update https://3.basecamp.com/123/buckets/456/question_answers/789 --content "updated answer"`,
-		Args: cobra.ExactArgs(1),
+  basecamp checkins answer update 789 "updated answer" --in my-project`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
 
@@ -900,13 +899,15 @@ You can pass either an answer ID or a Basecamp URL:
 				return err
 			}
 
+			// Show help when invoked with no arguments
+			if len(args) < 2 {
+				return cmd.Help()
+			}
+
 			// Extract ID and project from URL if provided
 			answerIDStr, urlProjectID := extractWithProject(args[0])
 
-			// Show help when invoked with no arguments
-			if content == "" {
-				return cmd.Help()
-			}
+			content := strings.Join(args[1:], " ")
 
 			// Resolve project - use URL > flag > config, with interactive fallback
 			projectID := *project
@@ -973,8 +974,6 @@ You can pass either an answer ID or a Basecamp URL:
 			)
 		},
 	}
-
-	cmd.Flags().StringVarP(&content, "content", "c", "", "New answer content (required)")
 
 	return cmd
 }

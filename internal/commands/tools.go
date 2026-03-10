@@ -101,7 +101,7 @@ func newToolsShowCmd(project *string) *cobra.Command {
 				output.WithBreadcrumbs(
 					output.Breadcrumb{
 						Action:      "rename",
-						Cmd:         fmt.Sprintf("basecamp tools update %d --title \"New Name\" --in %s", toolID, resolvedProjectID),
+						Cmd:         fmt.Sprintf("basecamp tools update %d \"New Name\" --in %s", toolID, resolvedProjectID),
 						Description: "Rename tool",
 					},
 					output.Breadcrumb{
@@ -122,10 +122,9 @@ func newToolsShowCmd(project *string) *cobra.Command {
 
 func newToolsCreateCmd(project *string) *cobra.Command {
 	var sourceID string
-	var title string
 
 	cmd := &cobra.Command{
-		Use:   "create",
+		Use:   "create [title]",
 		Short: "Create a new dock tool by cloning",
 		Long: `Create a new dock tool by cloning an existing one.
 
@@ -144,6 +143,11 @@ For example, clone a Campfire to create a second chat room in the same project.`
 			sourceToolID, err := strconv.ParseInt(sourceID, 10, 64)
 			if err != nil {
 				return output.ErrUsage("Invalid source tool ID")
+			}
+
+			title := ""
+			if len(args) > 0 {
+				title = args[0]
 			}
 
 			// Resolve project, with interactive fallback
@@ -199,21 +203,17 @@ For example, clone a Campfire to create a second chat room in the same project.`
 
 	cmd.Flags().StringVarP(&sourceID, "source", "s", "", "Source tool ID to clone (required)")
 	cmd.Flags().StringVar(&sourceID, "clone", "", "Source tool ID (alias for --source)")
-	cmd.Flags().StringVarP(&title, "title", "t", "", "Name for the new tool (optional)")
 	_ = cmd.MarkFlagRequired("source")
 
 	return cmd
 }
 
 func newToolsUpdateCmd(project *string) *cobra.Command {
-	var title string
-
 	cmd := &cobra.Command{
-		Use:     "update <id>",
+		Use:     "update <id> <title>",
 		Aliases: []string{"rename"},
 		Short:   "Rename a dock tool",
 		Long:    "Update a dock tool's title.",
-		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
 
@@ -221,15 +221,17 @@ func newToolsUpdateCmd(project *string) *cobra.Command {
 				return err
 			}
 
+			// Show help when invoked with insufficient arguments
+			if len(args) < 2 {
+				return cmd.Help()
+			}
+
 			toolID, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil {
 				return output.ErrUsage("Invalid tool ID")
 			}
 
-			// Show help when invoked with no arguments
-			if title == "" {
-				return cmd.Help()
-			}
+			title := args[1]
 
 			// Resolve project, with interactive fallback
 			projectID := *project
@@ -273,8 +275,6 @@ func newToolsUpdateCmd(project *string) *cobra.Command {
 			)
 		},
 	}
-
-	cmd.Flags().StringVarP(&title, "title", "t", "", "New title (required)")
 
 	return cmd
 }

@@ -32,7 +32,7 @@ func TestDocsCreateSubscribeEmptyIsError(t *testing.T) {
 
 	cmd := NewFilesCmd()
 
-	err := executeMessagesCommand(cmd, app, "documents", "create", "--title", "Test", "--subscribe", "")
+	err := executeMessagesCommand(cmd, app, "documents", "create", "Test", "--subscribe", "")
 	require.Error(t, err)
 
 	var e *output.Error
@@ -47,7 +47,7 @@ func TestDocsCreateSubscribeMutualExclusion(t *testing.T) {
 
 	cmd := NewFilesCmd()
 
-	err := executeMessagesCommand(cmd, app, "documents", "create", "--title", "Test", "--subscribe", "me", "--no-subscribe")
+	err := executeMessagesCommand(cmd, app, "documents", "create", "Test", "--subscribe", "me", "--no-subscribe")
 	require.Error(t, err)
 
 	var e *output.Error

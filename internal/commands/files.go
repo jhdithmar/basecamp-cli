@@ -198,12 +198,12 @@ func runFilesList(cmd *cobra.Command, project, vaultID string) error {
 			},
 			output.Breadcrumb{
 				Action:      "folder",
-				Cmd:         fmt.Sprintf("basecamp files folder create --name <name> --in %s", resolvedProjectID),
+				Cmd:         fmt.Sprintf("basecamp files folder create <name> --in %s", resolvedProjectID),
 				Description: "Create folder",
 			},
 			output.Breadcrumb{
 				Action:      "doc",
-				Cmd:         fmt.Sprintf("basecamp files doc create --title <title> --in %s", resolvedProjectID),
+				Cmd:         fmt.Sprintf("basecamp files doc create <title> --in %s", resolvedProjectID),
 				Description: "Create document",
 			},
 		),
@@ -341,7 +341,7 @@ func runFoldersList(cmd *cobra.Command, project, vaultID string, limit, page int
 		output.WithBreadcrumbs(
 			output.Breadcrumb{
 				Action:      "create",
-				Cmd:         fmt.Sprintf("basecamp files folder create --name <name> --in %s", resolvedProjectID),
+				Cmd:         fmt.Sprintf("basecamp files folder create <name> --in %s", resolvedProjectID),
 				Description: "Create folder",
 			},
 			output.Breadcrumb{
@@ -354,10 +354,8 @@ func runFoldersList(cmd *cobra.Command, project, vaultID string, limit, page int
 }
 
 func newFoldersCreateCmd(project, vaultID *string) *cobra.Command {
-	var name string
-
 	cmd := &cobra.Command{
-		Use:   "create",
+		Use:   "create <name>",
 		Short: "Create a new folder",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
@@ -367,9 +365,11 @@ func newFoldersCreateCmd(project, vaultID *string) *cobra.Command {
 			}
 
 			// Show help when invoked with no arguments
-			if name == "" {
+			if len(args) == 0 {
 				return cmd.Help()
 			}
+
+			name := args[0]
 
 			// Resolve project, with interactive fallback
 			projectID := *project
@@ -427,8 +427,6 @@ func newFoldersCreateCmd(project, vaultID *string) *cobra.Command {
 			)
 		},
 	}
-
-	cmd.Flags().StringVarP(&name, "name", "n", "", "Folder name (required)")
 
 	return cmd
 }
@@ -681,7 +679,7 @@ func runDocsList(cmd *cobra.Command, project, vaultID string, limit, page int, a
 		output.WithBreadcrumbs(
 			output.Breadcrumb{
 				Action:      "create",
-				Cmd:         fmt.Sprintf("basecamp files doc create --title <title> --in %s", resolvedProjectID),
+				Cmd:         fmt.Sprintf("basecamp files doc create <title> --in %s", resolvedProjectID),
 				Description: "Create document",
 			},
 			output.Breadcrumb{
@@ -694,14 +692,12 @@ func runDocsList(cmd *cobra.Command, project, vaultID string, limit, page int, a
 }
 
 func newDocsCreateCmd(project, vaultID *string) *cobra.Command {
-	var title string
-	var content string
 	var draft bool
 	var subscribe string
 	var noSubscribe bool
 
 	cmd := &cobra.Command{
-		Use:   "create",
+		Use:   "create <title> [content]",
 		Short: "Create a new document",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
@@ -711,8 +707,14 @@ func newDocsCreateCmd(project, vaultID *string) *cobra.Command {
 			}
 
 			// Show help when invoked with no arguments
-			if title == "" {
+			if len(args) == 0 {
 				return cmd.Help()
+			}
+
+			title := args[0]
+			content := ""
+			if len(args) > 1 {
+				content = args[1]
 			}
 
 			// Resolve subscription flags before project (fail fast on bad input)
@@ -782,7 +784,7 @@ func newDocsCreateCmd(project, vaultID *string) *cobra.Command {
 					},
 					output.Breadcrumb{
 						Action:      "update",
-						Cmd:         fmt.Sprintf("basecamp files update %d --content <text> --in %s", doc.ID, resolvedProjectID),
+						Cmd:         fmt.Sprintf("basecamp files update %d <title> --in %s", doc.ID, resolvedProjectID),
 						Description: "Update document",
 					},
 				),
@@ -790,8 +792,6 @@ func newDocsCreateCmd(project, vaultID *string) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&title, "title", "t", "", "Document title (required)")
-	cmd.Flags().StringVarP(&content, "content", "c", "", "Document content")
 	cmd.Flags().BoolVar(&draft, "draft", false, "Create as draft (default: published)")
 	cmd.Flags().StringVar(&subscribe, "subscribe", "", "Subscribe specific people (comma-separated names, emails, IDs, or \"me\")")
 	cmd.Flags().BoolVar(&noSubscribe, "no-subscribe", false, "Don't subscribe anyone else (silent, no notifications)")
@@ -978,9 +978,13 @@ func newFilesUpdateCmd(project *string) *cobra.Command {
 
 You can pass either an item ID or a Basecamp URL:
   basecamp files update 789 --title "new title" --in my-project
-  basecamp files update https://3.basecamp.com/123/buckets/456/documents/789 --title "new title"`,
+  basecamp files update 789 --content "new content" --in my-project`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if title == "" && content == "" && itemType == "" {
+				return cmd.Help()
+			}
+
 			app := appctx.FromContext(cmd.Context())
 
 			if err := ensureAccount(cmd, app); err != nil {
@@ -993,11 +997,6 @@ You can pass either an item ID or a Basecamp URL:
 			itemID, err := strconv.ParseInt(itemIDStr, 10, 64)
 			if err != nil {
 				return output.ErrUsage("Invalid item ID")
-			}
-
-			// Show help when invoked with no arguments
-			if title == "" && content == "" {
-				return cmd.Help()
 			}
 
 			// Resolve project - use URL > flag > config, with interactive fallback

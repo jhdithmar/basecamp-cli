@@ -183,7 +183,7 @@ func newTodolistgroupsShowCmd(project *string) *cobra.Command {
 				output.WithBreadcrumbs(
 					output.Breadcrumb{
 						Action:      "update",
-						Cmd:         fmt.Sprintf("basecamp todolistgroups update %s --name \"New Name\" --in %s", groupIDStr, resolvedProjectID),
+						Cmd:         fmt.Sprintf("basecamp todolistgroups update %s \"New Name\" --in %s", groupIDStr, resolvedProjectID),
 						Description: "Rename group",
 					},
 				),
@@ -193,10 +193,8 @@ func newTodolistgroupsShowCmd(project *string) *cobra.Command {
 }
 
 func newTodolistgroupsCreateCmd(project, todolist *string) *cobra.Command {
-	var name string
-
 	cmd := &cobra.Command{
-		Use:   "create",
+		Use:   "create <name>",
 		Short: "Create a todolist group",
 		Long:  "Create a new group in a todolist.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -210,9 +208,11 @@ func newTodolistgroupsCreateCmd(project, todolist *string) *cobra.Command {
 			}
 
 			// Show help when invoked with no arguments
-			if name == "" {
+			if len(args) == 0 {
 				return cmd.Help()
 			}
+
+			name := args[0]
 
 			// Resolve project, with interactive fallback
 			projectID := *project
@@ -282,19 +282,14 @@ func newTodolistgroupsCreateCmd(project, todolist *string) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&name, "name", "n", "", "Group name (required)")
-
 	return cmd
 }
 
 func newTodolistgroupsUpdateCmd() *cobra.Command {
-	var name string
-
 	cmd := &cobra.Command{
-		Use:     "update <id>",
+		Use:     "update <id> [name]",
 		Aliases: []string{"rename"},
 		Short:   "Update a todolist group",
-		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
 			if app == nil {
@@ -305,12 +300,19 @@ func newTodolistgroupsUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			groupIDStr := args[0]
-
 			// Show help when invoked with no arguments
-			if name == "" {
+			if len(args) == 0 {
 				return cmd.Help()
 			}
+
+			groupIDStr := args[0]
+
+			// Show help when no name provided
+			if len(args) < 2 {
+				return cmd.Help()
+			}
+
+			name := args[1]
 
 			groupID, err := strconv.ParseInt(groupIDStr, 10, 64)
 			if err != nil {
@@ -333,8 +335,6 @@ func newTodolistgroupsUpdateCmd() *cobra.Command {
 			)
 		},
 	}
-
-	cmd.Flags().StringVarP(&name, "name", "n", "", "New name (required)")
 
 	return cmd
 }

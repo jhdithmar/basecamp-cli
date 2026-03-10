@@ -205,39 +205,45 @@ You can pass either a message ID or a Basecamp URL:
 }
 
 func newMessagesCreateCmd(project *string, messageBoard *string) *cobra.Command {
-	var subject string
-	var content string
 	var edit bool
 	var draft bool
 	var subscribe string
 	var noSubscribe bool
 
 	cmd := &cobra.Command{
-		Use:   "create",
+		Use:   "create <title> [body]",
 		Short: "Create a new message",
 		Long:  "Post a new message to a project's message board.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Show help when invoked with no title
+			if len(args) == 0 {
+				return cmd.Help()
+			}
+			title := args[0]
+
+			// Body from second positional arg or --editor
+			var body string
+			if len(args) > 1 {
+				body = args[1]
+			}
+
 			// Validate user input first, before checking account
-			if edit && content != "" {
-				return output.ErrUsage("cannot combine --edit and --content")
+			if edit && body != "" {
+				return output.ErrUsage("cannot combine --edit and body argument")
 			}
 			if edit {
 				fi, err := os.Stdin.Stat()
 				if err != nil || (fi.Mode()&os.ModeCharDevice) == 0 {
 					return output.ErrUsage("cannot use --edit when stdin is not a terminal")
 				}
-				content, err = editor.Open("")
-				if err != nil {
-					return output.ErrUsage(err.Error())
+				var editorErr error
+				body, editorErr = editor.Open("")
+				if editorErr != nil {
+					return output.ErrUsage(editorErr.Error())
 				}
 			}
 
 			app := appctx.FromContext(cmd.Context())
-
-			// Show help when invoked with no subject
-			if subject == "" {
-				return cmd.Help()
-			}
 
 			if err := ensureAccount(cmd, app); err != nil {
 				return err
@@ -283,8 +289,8 @@ func newMessagesCreateCmd(project *string, messageBoard *string) *cobra.Command 
 			// Build SDK request
 			// Convert Markdown content to HTML for Basecamp's rich text fields
 			req := &basecamp.CreateMessageRequest{
-				Subject:       subject,
-				Content:       richtext.MarkdownToHTML(content),
+				Subject:       title,
+				Content:       richtext.MarkdownToHTML(body),
 				Subscriptions: subs,
 			}
 
@@ -318,9 +324,6 @@ func newMessagesCreateCmd(project *string, messageBoard *string) *cobra.Command 
 		},
 	}
 
-	cmd.Flags().StringVarP(&subject, "subject", "s", "", "Message subject (required)")
-	cmd.Flags().StringVarP(&content, "content", "b", "", "Message body content")
-	cmd.Flags().StringVar(&content, "body", "", "Message body content (alias for --content)")
 	cmd.Flags().BoolVar(&edit, "edit", false, "Open $EDITOR to compose message body")
 	cmd.Flags().BoolVar(&draft, "draft", false, "Create as draft (don't publish)")
 	cmd.Flags().StringVar(&subscribe, "subscribe", "", "Subscribe specific people (comma-separated names, emails, IDs, or \"me\")")
@@ -330,19 +333,23 @@ func newMessagesCreateCmd(project *string, messageBoard *string) *cobra.Command 
 }
 
 func newMessagesUpdateCmd() *cobra.Command {
-	var subject string
-	var content string
+	var title string
+	var body string
 
 	cmd := &cobra.Command{
 		Use:   "update <id|url>",
 		Short: "Update a message",
-		Long: `Update an existing message's subject or content.
+		Long: `Update an existing message's title or body.
 
 You can pass either a message ID or a Basecamp URL:
-  basecamp messages update 789 --subject "new title"
-  basecamp messages update https://3.basecamp.com/123/buckets/456/messages/789 --subject "new title"`,
+  basecamp messages update 789 --title "new title"
+  basecamp messages update 789 --body "new body"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if title == "" && body == "" {
+				return cmd.Help()
+			}
+
 			app := appctx.FromContext(cmd.Context())
 
 			if err := ensureAccount(cmd, app); err != nil {
@@ -357,16 +364,11 @@ You can pass either a message ID or a Basecamp URL:
 				return output.ErrUsage("Invalid message ID")
 			}
 
-			// Show help when invoked with no flags
-			if subject == "" && content == "" {
-				return cmd.Help()
-			}
-
 			// Build SDK request
 			// Convert Markdown content to HTML for Basecamp's rich text fields
 			req := &basecamp.UpdateMessageRequest{
-				Subject: subject,
-				Content: richtext.MarkdownToHTML(content),
+				Subject: title,
+				Content: richtext.MarkdownToHTML(body),
 			}
 
 			message, err := app.Account().Messages().Update(cmd.Context(), messageID, req)
@@ -387,9 +389,8 @@ You can pass either a message ID or a Basecamp URL:
 		},
 	}
 
-	cmd.Flags().StringVarP(&subject, "subject", "s", "", "New message subject")
-	cmd.Flags().StringVarP(&content, "content", "b", "", "New message content")
-	cmd.Flags().StringVar(&content, "body", "", "New message content (alias for --content)")
+	cmd.Flags().StringVarP(&title, "title", "t", "", "New title")
+	cmd.Flags().StringVarP(&body, "body", "b", "", "New body content")
 
 	return cmd
 }

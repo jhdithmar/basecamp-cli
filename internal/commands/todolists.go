@@ -143,7 +143,7 @@ func runTodolistsList(cmd *cobra.Command, project, todosetFlag string, limit, pa
 			},
 			output.Breadcrumb{
 				Action:      "create",
-				Cmd:         fmt.Sprintf("basecamp todolists create --name <name> --in %s", resolvedProjectID),
+				Cmd:         fmt.Sprintf("basecamp todolists create <name> --in %s", resolvedProjectID),
 				Description: "Create todolist",
 			},
 		),
@@ -236,11 +236,10 @@ You can pass either a todolist ID or a Basecamp URL:
 }
 
 func newTodolistsCreateCmd(project, todosetID *string) *cobra.Command {
-	var name string
 	var description string
 
 	cmd := &cobra.Command{
-		Use:   "create",
+		Use:   "create <name>",
 		Short: "Create a new todolist",
 		Long:  "Create a new todolist in a project.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -254,9 +253,11 @@ func newTodolistsCreateCmd(project, todosetID *string) *cobra.Command {
 			}
 
 			// Show help when invoked with no arguments
-			if name == "" {
+			if len(args) == 0 {
 				return cmd.Help()
 			}
+
+			name := args[0]
 
 			// Resolve project, with interactive fallback
 			projectID := *project
@@ -323,7 +324,6 @@ func newTodolistsCreateCmd(project, todosetID *string) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(todosetID, "todoset", "t", "", "Todoset ID (for projects with multiple todosets)")
-	cmd.Flags().StringVarP(&name, "name", "n", "", "Todolist name (required)")
 	cmd.Flags().StringVarP(&description, "description", "d", "", "Todolist description")
 
 	return cmd
@@ -340,9 +340,13 @@ func newTodolistsUpdateCmd(project *string) *cobra.Command {
 
 You can pass either a todolist ID or a Basecamp URL:
   basecamp todolists update 789 --name "new name" --in my-project
-  basecamp todolists update https://3.basecamp.com/123/buckets/456/todolists/789 --name "new name"`,
+  basecamp todolists update 789 --description "new desc" --in my-project`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if name == "" && description == "" {
+				return cmd.Help()
+			}
+
 			app := appctx.FromContext(cmd.Context())
 			if app == nil {
 				return fmt.Errorf("app not initialized")
@@ -354,11 +358,6 @@ You can pass either a todolist ID or a Basecamp URL:
 
 			// Extract ID and project from URL if provided
 			todolistIDStr, urlProjectID := extractWithProject(args[0])
-
-			// Show help when invoked with no flags
-			if name == "" && description == "" {
-				return cmd.Help()
-			}
 
 			// Resolve project - use URL > flag > config, with interactive fallback
 			projectID := *project
@@ -414,8 +413,8 @@ You can pass either a todolist ID or a Basecamp URL:
 		},
 	}
 
-	cmd.Flags().StringVarP(&name, "name", "n", "", "New todolist name")
-	cmd.Flags().StringVarP(&description, "description", "d", "", "New todolist description")
+	cmd.Flags().StringVarP(&name, "name", "n", "", "New name")
+	cmd.Flags().StringVarP(&description, "description", "d", "", "New description")
 
 	return cmd
 }
