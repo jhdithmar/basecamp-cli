@@ -370,6 +370,18 @@ Supports batch commenting with comma-separated IDs.`,
 				return app.OK(lastComment,
 					output.WithEntity("comment"),
 					output.WithSummary(fmt.Sprintf("Commented on #%s", commented[0])),
+					output.WithBreadcrumbs(
+						output.Breadcrumb{
+							Action:      "show",
+							Cmd:         fmt.Sprintf("basecamp comments show %d", lastComment.ID),
+							Description: "View comment",
+						},
+						output.Breadcrumb{
+							Action:      "update",
+							Cmd:         fmt.Sprintf("basecamp comments update %d <text>", lastComment.ID),
+							Description: "Update comment",
+						},
+					),
 				)
 			}
 
