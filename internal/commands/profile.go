@@ -144,9 +144,6 @@ func newProfileShowCmd() *cobra.Command {
 			if p.TodolistID != "" {
 				result["todolist_id"] = p.TodolistID
 			}
-			if p.Scope != "" {
-				result["scope"] = p.Scope
-			}
 			if app.Config.DefaultProfile == name {
 				result["default"] = true
 			}
@@ -155,10 +152,14 @@ func newProfileShowCmd() *cobra.Command {
 			credKey := "profile:" + name
 			store := app.Auth.GetStore()
 			creds, err := store.Load(credKey)
+			isLaunchpad := false
 			if err == nil && creds.AccessToken != "" {
 				result["authenticated"] = true
 				result["oauth_type"] = creds.OAuthType
-				if creds.Scope != "" {
+				isLaunchpad = creds.OAuthType == "launchpad"
+
+				// Suppress credential scope for Launchpad (scopes not supported)
+				if !isLaunchpad && creds.Scope != "" {
 					result["credential_scope"] = creds.Scope
 				}
 				if creds.UserID != "" {
@@ -166,6 +167,12 @@ func newProfileShowCmd() *cobra.Command {
 				}
 			} else {
 				result["authenticated"] = false
+			}
+
+			// Show profile config scope only when not Launchpad-authenticated
+			// (Launchpad scope is misleading; unauthenticated profiles show as-is)
+			if p.Scope != "" && !isLaunchpad {
+				result["scope"] = p.Scope
 			}
 
 			return app.OK(result, output.WithSummary(fmt.Sprintf("Profile: %s", name)))
@@ -215,25 +222,48 @@ Examples:
 			if baseURL == "" {
 				baseURL = "https://3.basecampapi.com"
 			}
-			if scope == "" {
-				scope = "read"
-			}
 
-			// Validate scope
-			if scope != "read" && scope != "full" {
-				return output.ErrUsage("Invalid scope. Use 'read' or 'full'")
-			}
-
-			// Build profile config
+			// Build profile config (scope unknown until after discovery)
 			profileCfg := &config.ProfileConfig{
 				BaseURL: baseURL,
-				Scope:   scope,
 			}
 			if accountID != "" {
 				profileCfg.AccountID = accountID
 			}
 
-			// Write profile to global config
+			// Snapshot in-memory config before mutation
+			prevActiveProfile := app.Config.ActiveProfile
+			prevBaseURL := app.Config.BaseURL
+
+			// Set up in-memory config for the login flow (no persistence yet)
+			if app.Config.Profiles == nil {
+				app.Config.Profiles = make(map[string]*config.ProfileConfig)
+			}
+			app.Config.Profiles[name] = profileCfg
+			app.Config.ActiveProfile = name
+			app.Config.BaseURL = profileCfg.BaseURL
+
+			// Start OAuth login flow — must succeed before we persist anything
+			loginResult, err := app.Auth.Login(cmd.Context(), auth.LoginOptions{
+				Scope:     scope,
+				NoBrowser: noBrowser,
+				Remote:    remote,
+				Local:     local,
+				Logger:    func(msg string) { fmt.Println(msg) },
+			})
+			if err != nil {
+				// Restore in-memory state
+				delete(app.Config.Profiles, name)
+				app.Config.ActiveProfile = prevActiveProfile
+				app.Config.BaseURL = prevBaseURL
+				return err
+			}
+
+			// Login succeeded — persist profile to config
+			if loginResult.Scope != "" {
+				profileCfg.Scope = loginResult.Scope
+			}
+
 			configPath := filepath.Join(config.GlobalConfigDir(), "config.json")
 			if err := os.MkdirAll(config.GlobalConfigDir(), 0700); err != nil {
 				return fmt.Errorf("failed to create config directory: %w", err)
@@ -250,15 +280,15 @@ Examples:
 				profilesMap = make(map[string]any)
 			}
 
-			// Add profile
+			// Add profile with effective scope
 			profileEntry := map[string]any{
 				"base_url": profileCfg.BaseURL,
 			}
-			if profileCfg.Scope != "" {
-				profileEntry["scope"] = profileCfg.Scope
-			}
 			if profileCfg.AccountID != "" {
 				profileEntry["account_id"] = profileCfg.AccountID
+			}
+			if profileCfg.Scope != "" {
+				profileEntry["scope"] = profileCfg.Scope
 			}
 			profilesMap[name] = profileEntry
 			configData["profiles"] = profilesMap
@@ -274,31 +304,9 @@ Examples:
 				return err
 			}
 
-			// Update in-memory config and start login
-			if app.Config.Profiles == nil {
-				app.Config.Profiles = make(map[string]*config.ProfileConfig)
-			}
-			app.Config.Profiles[name] = profileCfg
-			app.Config.ActiveProfile = name
-			app.Config.BaseURL = profileCfg.BaseURL
-			if profileCfg.Scope != "" {
-				app.Config.Scope = profileCfg.Scope
-			}
-
-			// Start OAuth login flow for the new profile
-			if err := app.Auth.Login(cmd.Context(), auth.LoginOptions{
-				Scope:     scope,
-				NoBrowser: noBrowser,
-				Remote:    remote,
-				Local:     local,
-				Logger:    func(msg string) { fmt.Println(msg) },
-			}); err != nil {
-				return err
-			}
-
 			// Try to fetch and store user profile
-			resp, err := app.SDK.Get(cmd.Context(), "/my/profile.json")
-			if err == nil {
+			resp, profileErr := app.SDK.Get(cmd.Context(), "/my/profile.json")
+			if profileErr == nil {
 				var profile struct {
 					ID    int    `json:"id"`
 					Name  string `json:"name"`
@@ -312,7 +320,9 @@ Examples:
 			result := map[string]any{
 				"name":     name,
 				"base_url": baseURL,
-				"scope":    scope,
+			}
+			if loginResult.Scope != "" {
+				result["scope"] = loginResult.Scope
 			}
 			if isDefault {
 				result["default"] = true
@@ -322,7 +332,7 @@ Examples:
 	}
 
 	cmd.Flags().StringVar(&baseURL, "base-url", "", "Basecamp API base URL (default: https://3.basecampapi.com)")
-	cmd.Flags().StringVar(&scope, "scope", "", "OAuth scope: 'read' (default) or 'full'")
+	cmd.Flags().StringVar(&scope, "scope", "", "OAuth scope: 'read' or 'full' (BC3 only)")
 	cmd.Flags().StringVar(&accountID, "account", "", "Account ID")
 	cmd.Flags().BoolVar(&noBrowser, "no-browser", false, "Don't open browser automatically")
 	cmd.Flags().BoolVar(&remote, "remote", false, "Force remote/headless mode (paste callback URL instead of local listener)")
