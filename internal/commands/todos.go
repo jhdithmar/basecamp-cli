@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -775,6 +776,7 @@ func completeTodos(cmd *cobra.Command, todoIDs []string) error {
 
 	var completedTodos []basecamp.Todo
 	var failed []string
+	var firstAPIErr error
 
 	for _, todoIDStr := range extractedIDs {
 		todoID, err := strconv.ParseInt(todoIDStr, 10, 64)
@@ -785,6 +787,9 @@ func completeTodos(cmd *cobra.Command, todoIDs []string) error {
 		err = app.Account().Todos().Complete(cmd.Context(), todoID)
 		if err != nil {
 			failed = append(failed, todoIDStr)
+			if firstAPIErr == nil {
+				firstAPIErr = err
+			}
 			continue
 		}
 		// Fetch the completed todo to show it
@@ -795,6 +800,26 @@ func completeTodos(cmd *cobra.Command, todoIDs []string) error {
 		} else {
 			completedTodos = append(completedTodos, *todo)
 		}
+	}
+
+	// If all operations failed, return an error for automation
+	if len(completedTodos) == 0 && len(failed) > 0 {
+		if firstAPIErr != nil {
+			converted := convertSDKError(firstAPIErr)
+			var outErr *output.Error
+			if errors.As(converted, &outErr) {
+				return &output.Error{
+					Code:       outErr.Code,
+					Message:    fmt.Sprintf("Failed to complete todos %s: %s", strings.Join(failed, ", "), outErr.Message),
+					Hint:       outErr.Hint,
+					HTTPStatus: outErr.HTTPStatus,
+					Retryable:  outErr.Retryable,
+					Cause:      outErr,
+				}
+			}
+			return fmt.Errorf("failed to complete todos %s: %w", strings.Join(failed, ", "), converted)
+		}
+		return output.ErrUsage(fmt.Sprintf("Invalid todo ID(s): %s", strings.Join(failed, ", ")))
 	}
 
 	summary := fmt.Sprintf("Completed %d todo(s)", len(completedTodos))
@@ -1150,6 +1175,7 @@ func reopenTodos(cmd *cobra.Command, todoIDs []string) error {
 
 	var reopenedTodos []basecamp.Todo
 	var failed []string
+	var firstAPIErr error
 
 	for _, todoIDStr := range extractedIDs {
 		todoID, err := strconv.ParseInt(todoIDStr, 10, 64)
@@ -1160,6 +1186,9 @@ func reopenTodos(cmd *cobra.Command, todoIDs []string) error {
 		err = app.Account().Todos().Uncomplete(cmd.Context(), todoID)
 		if err != nil {
 			failed = append(failed, todoIDStr)
+			if firstAPIErr == nil {
+				firstAPIErr = err
+			}
 			continue
 		}
 		// Fetch the reopened todo to show it
@@ -1169,6 +1198,26 @@ func reopenTodos(cmd *cobra.Command, todoIDs []string) error {
 		} else {
 			reopenedTodos = append(reopenedTodos, *todo)
 		}
+	}
+
+	// If all operations failed, return an error for automation
+	if len(reopenedTodos) == 0 && len(failed) > 0 {
+		if firstAPIErr != nil {
+			converted := convertSDKError(firstAPIErr)
+			var outErr *output.Error
+			if errors.As(converted, &outErr) {
+				return &output.Error{
+					Code:       outErr.Code,
+					Message:    fmt.Sprintf("Failed to reopen todos %s: %s", strings.Join(failed, ", "), outErr.Message),
+					Hint:       outErr.Hint,
+					HTTPStatus: outErr.HTTPStatus,
+					Retryable:  outErr.Retryable,
+					Cause:      outErr,
+				}
+			}
+			return fmt.Errorf("failed to reopen todos %s: %w", strings.Join(failed, ", "), converted)
+		}
+		return output.ErrUsage(fmt.Sprintf("Invalid todo ID(s): %s", strings.Join(failed, ", ")))
 	}
 
 	summary := fmt.Sprintf("Reopened %d todo(s)", len(reopenedTodos))
