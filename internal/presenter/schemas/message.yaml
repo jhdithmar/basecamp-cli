@@ -1,0 +1,48 @@
+entity: message
+kind: recording
+type_key: "Message"
+
+identity:
+  label: subject
+  id: id
+
+headline:
+  default:
+    template: "{{.subject}}"
+
+fields:
+  subject:
+    role: title
+    emphasis: primary
+    format: text
+
+  content:
+    role: body
+    format: text
+
+  creator:
+    role: detail
+    format: person
+
+  created_at:
+    role: meta
+    emphasis: muted
+    format: relative_time
+
+  id:
+    role: meta
+    emphasis: muted
+
+  app_url:
+    role: meta
+    format: text
+
+views:
+  list:
+    columns: [id, subject, creator, created_at]
+  detail:
+    sections:
+      - fields: [subject, content]
+      - heading: Metadata
+        fields: [id, app_url, created_at, creator]
+

@@ -2101,6 +2101,19 @@ func TestFormatCellStripsANSIFromArrayElements(t *testing.T) {
 	})
 }
 
+func TestFormatCellCollapsesNewlines(t *testing.T) {
+	t.Run("top-level string with mixed newlines", func(t *testing.T) {
+		result := formatCell("line one\nline two\r\nline three\rfour")
+		assert.Equal(t, "line one line two line three four", result)
+	})
+
+	t.Run("string elements in array with newlines", func(t *testing.T) {
+		input := []any{"hello\nworld", "foo\r\nbar"}
+		result := formatCell(input)
+		assert.Equal(t, "hello world, foo bar", result)
+	})
+}
+
 func TestRenderDataStripsEscapesFromTopLevelStrings(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -2185,6 +2198,62 @@ func TestWithEntityCampfireLineMarkdownOutput(t *testing.T) {
 	assert.Contains(t, output, "Hello world",
 		"campfire_line markdown should collapse multiline content")
 	assert.Contains(t, output, "Alice")
+}
+
+func TestWithEntityMessageStyledOutput(t *testing.T) {
+	var buf bytes.Buffer
+	w := New(Options{
+		Format: FormatStyled,
+		Writer: &buf,
+	})
+
+	data := map[string]any{
+		"id":         float64(100),
+		"subject":    "Weekly update",
+		"content":    "<p>Status report</p>",
+		"creator":    map[string]any{"name": "Bob"},
+		"created_at": "2026-03-01T09:00:00Z",
+	}
+	err := w.OK(data,
+		WithEntity("message"),
+		WithSummary("Message: Weekly update"),
+	)
+	require.NoError(t, err)
+
+	output := buf.String()
+	assert.Contains(t, output, "Weekly update",
+		"message detail should show subject")
+	assert.Contains(t, output, "Status report",
+		"message detail should show HTML-stripped content")
+}
+
+func TestWithEntityMessageMarkdownOutput(t *testing.T) {
+	var buf bytes.Buffer
+	w := New(Options{
+		Format: FormatMarkdown,
+		Writer: &buf,
+	})
+
+	data := map[string]any{
+		"id":         float64(100),
+		"subject":    "Weekly update",
+		"content":    "<p>Status report</p>",
+		"creator":    map[string]any{"name": "Bob"},
+		"created_at": "2026-03-01T09:00:00Z",
+	}
+	err := w.OK(data,
+		WithEntity("message"),
+		WithSummary("Message: Weekly update"),
+	)
+	require.NoError(t, err)
+
+	output := buf.String()
+	assert.NotContains(t, output, "\x1b",
+		"markdown output must not contain ANSI codes")
+	assert.Contains(t, output, "Weekly update",
+		"message markdown should show subject")
+	assert.Contains(t, output, "Status report",
+		"message markdown should show HTML-stripped content")
 }
 
 func TestRenderDataStripsOSCFromTopLevelString(t *testing.T) {
