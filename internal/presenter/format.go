@@ -176,17 +176,22 @@ func formatPerson(val any) string {
 	return ""
 }
 
-// singleLine returns the first non-empty line from s, trimmed.
+// singleLine collapses multiline text into a single line by joining all
+// non-empty lines with spaces. Leading/trailing whitespace is trimmed.
 func singleLine(s string) string {
-	if strings.IndexByte(s, '\n') == -1 {
+	if !strings.ContainsAny(s, "\n\r") {
 		return strings.TrimSpace(s)
 	}
+	// Normalize \r\n and bare \r to \n before splitting.
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	s = strings.ReplaceAll(s, "\r", "\n")
+	var parts []string
 	for _, line := range strings.Split(s, "\n") {
 		if trimmed := strings.TrimSpace(line); trimmed != "" {
-			return trimmed
+			parts = append(parts, trimmed)
 		}
 	}
-	return ""
+	return strings.Join(parts, " ")
 }
 
 // formatText converts any value to a string representation.
