@@ -78,6 +78,58 @@ test: check-toolchain
 test-e2e: build
 	./e2e/run.sh
 
+# Record cassettes for happy-path replay tests.
+# Required env vars:
+#   BASECAMP_RECORD_TOKEN   - valid API token for the target server
+#   BASECAMP_RECORD_TARGET  - API base URL (e.g. http://3.basecampapi.localhost:4001)
+#   BASECAMP_RECORD_ACCOUNT - account ID baked into cassette URL paths
+#   BASECAMP_RECORD_PROJECT - project ID for project-scoped commands
+.PHONY: record-cassettes
+record-cassettes: build
+	@test -n "$(BASECAMP_RECORD_TOKEN)" || { echo "Set BASECAMP_RECORD_TOKEN"; exit 1; }
+	@test -n "$(BASECAMP_RECORD_TARGET)" || { echo "Set BASECAMP_RECORD_TARGET (e.g. http://3.basecampapi.localhost:4001)"; exit 1; }
+	@test -n "$(BASECAMP_RECORD_ACCOUNT)" || { echo "Set BASECAMP_RECORD_ACCOUNT"; exit 1; }
+	@test -n "$(BASECAMP_RECORD_PROJECT)" || { echo "Set BASECAMP_RECORD_PROJECT"; exit 1; }
+	rm -f e2e/cassettes/happypath/*.json
+	BASECAMP_RECORD_TOKEN=$(BASECAMP_RECORD_TOKEN) \
+	BASECAMP_RECORD_TARGET=$(BASECAMP_RECORD_TARGET) \
+	BASECAMP_RECORD_ACCOUNT=$(BASECAMP_RECORD_ACCOUNT) \
+	BASECAMP_RECORD_PROJECT=$(BASECAMP_RECORD_PROJECT) \
+	bats e2e/qa_happypath.bats
+	@echo "Cassettes recorded to e2e/cassettes/happypath/"
+
+# Run pre-release smoke suite against a live test account (requires BASECAMP_TOKEN)
+.PHONY: smoke
+smoke: build
+	./e2e/smoke/run_smoke.sh
+
+# Show coverage gaps from smoke traces (unverifiable + out-of-scope).
+# Pass/fail comes from bats exit codes via make smoke, not traces.
+.PHONY: qa-report
+qa-report:
+	@QA_TRACE_DIR=$${QA_TRACE_DIR:-tmp/qa-traces}; \
+	if [ ! -f "$$QA_TRACE_DIR/traces.jsonl" ]; then \
+		echo "No traces found. Run 'make smoke' first."; \
+		exit 1; \
+	fi; \
+	echo "=== QA Coverage Gaps ==="; \
+	echo ""; \
+	unverified=$$(jq -r 'select(.status == "unverifiable") | .test' "$$QA_TRACE_DIR/traces.jsonl" | wc -l | tr -d ' '); \
+	outofscope=$$(jq -r 'select(.status == "out-of-scope") | .test' "$$QA_TRACE_DIR/traces.jsonl" | wc -l | tr -d ' '); \
+	echo "  Unverifiable:  $$unverified"; \
+	echo "  Out-of-scope:  $$outofscope"; \
+	echo ""; \
+	if [ "$$unverified" -gt 0 ]; then \
+		echo "UNVERIFIABLE:"; \
+		jq -r 'select(.status == "unverifiable") | "  - \(.test): \(.reason)"' "$$QA_TRACE_DIR/traces.jsonl"; \
+		echo ""; \
+	fi; \
+	if [ "$$outofscope" -gt 0 ]; then \
+		echo "OUT-OF-SCOPE:"; \
+		jq -r 'select(.status == "out-of-scope") | "  - \(.test): \(.reason)"' "$$QA_TRACE_DIR/traces.jsonl"; \
+		echo ""; \
+	fi
+
 # Run tests with race detector
 .PHONY: race-test
 race-test: check-toolchain
@@ -437,11 +489,14 @@ help:
 	@echo "  build-bsd      Build for FreeBSD + OpenBSD (arm64 + amd64)"
 	@echo ""
 	@echo "Test:"
-	@echo "  test           Run Go unit tests"
-	@echo "  test-e2e       Run end-to-end tests against Go binary"
-	@echo "  race-test      Run tests with race detector"
-	@echo "  test-coverage  Run tests with coverage report"
-	@echo "  coverage       Run tests with coverage and open in browser"
+	@echo "  test             Run Go unit tests"
+	@echo "  test-e2e         Run end-to-end tests against Go binary"
+	@echo "  race-test        Run tests with race detector"
+	@echo "  test-coverage    Run tests with coverage report"
+	@echo "  coverage         Run tests with coverage and open in browser"
+	@echo "  record-cassettes Record happy-path cassettes (TOKEN+TARGET+ACCOUNT+PROJECT)"
+	@echo "  smoke            Run pre-release smoke suite (BASECAMP_TOKEN=...)"
+	@echo "  qa-report        Show QA coverage report from smoke traces"
 	@echo ""
 	@echo "Performance:"
 	@echo "  bench          Run all benchmarks"
