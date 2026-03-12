@@ -146,8 +146,8 @@ func TestGroupCommandShowsPersistentLocalFlags(t *testing.T) {
 		{"messages --project", "messages", commands.NewMessagesCmd, "--project"},
 		{"messages --in", "messages", commands.NewMessagesCmd, "--in"},
 		{"messages --message-board", "messages", commands.NewMessagesCmd, "--message-board"},
-		{"campfire --project", "campfire", commands.NewCampfireCmd, "--project"},
-		{"campfire --campfire", "campfire", commands.NewCampfireCmd, "--campfire"},
+		{"chat --project", "chat", commands.NewChatCmd, "--project"},
+		{"chat --chat", "chat", commands.NewChatCmd, "--chat"},
 	}
 
 	for _, tt := range tests {
@@ -186,7 +186,7 @@ func TestRootLevelLeafCommandHelp(t *testing.T) {
 
 func TestLeafCommandInheritsParentPersistentFlags(t *testing.T) {
 	// Leaf commands must show parent-defined persistent flags in INHERITED
-	// FLAGS. These flags carry required context (--project, --campfire, etc.)
+	// FLAGS. These flags carry required context (--project, --chat, etc.)
 	// and hiding them breaks discoverability.
 	isolateHelpTest(t)
 
@@ -203,10 +203,10 @@ func TestLeafCommandInheritsParentPersistentFlags(t *testing.T) {
 			[]string{"--project", "--in", "--message-board"},
 		},
 		{
-			"campfire post inherits --project and --campfire",
-			[]string{"campfire", "post", "--help"},
-			commands.NewCampfireCmd,
-			[]string{"--project", "--campfire", "--content-type"},
+			"chat post inherits --project and --chat",
+			[]string{"chat", "post", "--help"},
+			commands.NewChatCmd,
+			[]string{"--project", "--chat", "--content-type"},
 		},
 		{
 			"timesheet report inherits date and person flags",

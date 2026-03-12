@@ -15,7 +15,7 @@ import (
 // Hub manages three realm tiers:
 //   - Global: app lifetime (identity, account list)
 //   - Account: active account session (projects, people)
-//   - Project: active project context (schedule, campfire, messages, etc.)
+//   - Project: active project context (schedule, chat, messages, etc.)
 //
 // Typed pool accessors return realm-scoped pools whose lifecycle is automatic:
 // project pools are torn down on LeaveProject/EnsureProject(different),
@@ -711,31 +711,31 @@ func mapCardInfo(c basecamp.Card) CardInfo {
 	}
 }
 
-// CampfireLines returns a project-scoped pool of campfire lines with polling config.
-// The pool stores CampfireLinesResult (lines + TotalCount) for pagination support.
+// ChatLines returns a project-scoped pool of chat lines with polling config.
+// The pool stores ChatLinesResult (lines + TotalCount) for pagination support.
 // Pagination (fetchOlderLines) and writes (sendLine) remain view-owned.
-func (h *Hub) CampfireLines(projectID, campfireID int64) *Pool[CampfireLinesResult] {
+func (h *Hub) ChatLines(projectID, chatID int64) *Pool[ChatLinesResult] {
 	realm := h.EnsureProject(projectID)
-	key := fmt.Sprintf("campfire-lines:%d:%d", projectID, campfireID)
-	p := RealmPool(realm, key, func() *Pool[CampfireLinesResult] {
+	key := fmt.Sprintf("chat-lines:%d:%d", projectID, chatID)
+	p := RealmPool(realm, key, func() *Pool[ChatLinesResult] {
 		return NewPool(key, PoolConfig{
 			FreshTTL: 4 * time.Second, // expire before PollBase fires
 			StaleTTL: 5 * time.Minute, // serve stale during re-fetch
 			PollBase: 5 * time.Second,
 			PollBg:   30 * time.Second,
 			PollMax:  2 * time.Minute,
-		}, func(ctx context.Context) (CampfireLinesResult, error) {
+		}, func(ctx context.Context) (ChatLinesResult, error) {
 			client := h.accountClient()
-			result, err := client.Campfires().ListLines(ctx, campfireID, nil)
+			result, err := client.Campfires().ListLines(ctx, chatID, nil)
 			if err != nil {
-				return CampfireLinesResult{}, err
+				return ChatLinesResult{}, err
 			}
-			infos := mapCampfireLines(result.Lines)
+			infos := mapChatLines(result.Lines)
 			// API returns newest-first; reverse for chronological display
 			for i, j := 0, len(infos)-1; i < j; i, j = i+1, j-1 {
 				infos[i], infos[j] = infos[j], infos[i]
 			}
-			return CampfireLinesResult{
+			return ChatLinesResult{
 				Lines:      infos,
 				TotalCount: result.Meta.TotalCount,
 			}, nil
@@ -1164,13 +1164,13 @@ func (h *Hub) CreateCheckinAnswer(ctx context.Context, accountID string, project
 	return err
 }
 
-// mapCampfireLines converts SDK campfire lines to CampfireLineInfo.
-// Shared by CampfireLines (project-scoped) and BonfireLines (global-scoped).
-func mapCampfireLines(lines []basecamp.CampfireLine) []CampfireLineInfo {
-	infos := make([]CampfireLineInfo, 0, len(lines))
+// mapChatLines converts SDK chat lines to ChatLineInfo.
+// Shared by ChatLines (project-scoped) and BonfireLines (global-scoped).
+func mapChatLines(lines []basecamp.CampfireLine) []ChatLineInfo {
+	infos := make([]ChatLineInfo, 0, len(lines))
 	for _, line := range lines {
 		creator := personName(line.Creator)
-		infos = append(infos, CampfireLineInfo{
+		infos = append(infos, ChatLineInfo{
 			ID:          line.ID,
 			Body:        line.Content,
 			Creator:     creator,

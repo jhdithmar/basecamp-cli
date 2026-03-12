@@ -1956,10 +1956,10 @@ func TestRenderDetailHeadlineHyperlink(t *testing.T) {
 	}
 }
 
-func TestCampfireLineSchemaLoads(t *testing.T) {
-	schema := LookupByName("campfire_line")
-	require.NotNil(t, schema, "campfire_line schema must be registered")
-	assert.Equal(t, "campfire_line", schema.Entity)
+func TestChatLineSchemaLoads(t *testing.T) {
+	schema := LookupByName("chat_line")
+	require.NotNil(t, schema, "chat_line schema must be registered")
+	assert.Equal(t, "chat_line", schema.Entity)
 	assert.Equal(t, "recording", schema.Kind)
 	assert.Empty(t, schema.TypeKey, "type_key must be empty — lines have multiple API types")
 
@@ -1968,8 +1968,8 @@ func TestCampfireLineSchemaLoads(t *testing.T) {
 	assert.NotContains(t, schema.Views.List.Columns, "title")
 }
 
-func TestCampfireLineRenderListCollapsesMultiline(t *testing.T) {
-	schema := LookupByName("campfire_line")
+func TestChatLineRenderListCollapsesMultiline(t *testing.T) {
+	schema := LookupByName("chat_line")
 	require.NotNil(t, schema)
 
 	data := []map[string]any{

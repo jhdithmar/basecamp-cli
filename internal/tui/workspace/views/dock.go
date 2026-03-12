@@ -20,7 +20,7 @@ import (
 // dockKeyMap defines dock-specific keybindings.
 type dockKeyMap struct {
 	Todos    key.Binding
-	Campfire key.Binding
+	Chat     key.Binding
 	Messages key.Binding
 	Cards    key.Binding
 	Schedule key.Binding
@@ -33,9 +33,9 @@ func defaultDockKeyMap() dockKeyMap {
 			key.WithKeys("t"),
 			key.WithHelp("t", "todos"),
 		),
-		Campfire: key.NewBinding(
+		Chat: key.NewBinding(
 			key.WithKeys("c"),
-			key.WithHelp("c", "campfire"),
+			key.WithHelp("c", "chat"),
 		),
 		Messages: key.NewBinding(
 			key.WithKeys("m"),
@@ -124,7 +124,7 @@ func (v *Dock) ShortHelp() []key.Binding {
 	return []key.Binding{
 		key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
 		v.keys.Todos,
-		v.keys.Campfire,
+		v.keys.Chat,
 		v.keys.Messages,
 		v.keys.Cards,
 		v.keys.Activity,
@@ -134,7 +134,7 @@ func (v *Dock) ShortHelp() []key.Binding {
 // FullHelp implements View.
 func (v *Dock) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{v.keys.Todos, v.keys.Campfire, v.keys.Messages},
+		{v.keys.Todos, v.keys.Chat, v.keys.Messages},
 		{v.keys.Cards, v.keys.Schedule, v.keys.Activity},
 	}
 }
@@ -239,8 +239,8 @@ func (v *Dock) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	switch {
 	case key.Matches(msg, dk.Todos):
 		return v.navigateToTool("todoset", workspace.ViewTodos)
-	case key.Matches(msg, dk.Campfire):
-		return v.navigateToTool("chat", workspace.ViewCampfire)
+	case key.Matches(msg, dk.Chat):
+		return v.navigateToTool("chat", workspace.ViewChat)
 	case key.Matches(msg, dk.Messages):
 		return v.navigateToTool("message_board", workspace.ViewMessages)
 	case key.Matches(msg, dk.Cards):

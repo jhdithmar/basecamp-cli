@@ -332,7 +332,7 @@ func TestProjects_ShortHelp_RightPanel(t *testing.T) {
 	assert.Equal(t, "open", hints[0].Help().Desc)
 	assert.Equal(t, "back", hints[1].Help().Desc)
 	assert.Equal(t, "todos", hints[2].Help().Desc)
-	assert.Equal(t, "campfire", hints[3].Help().Desc)
+	assert.Equal(t, "chat", hints[3].Help().Desc)
 	assert.Equal(t, "activity", hints[6].Help().Desc)
 }
 

@@ -116,8 +116,8 @@ func (v *MyStuff) View() string {
 	return v.list.View()
 }
 
-// campfireRecordingType is the canonical type used for campfire recents routing.
-const campfireRecordingType = "Campfire"
+// chatRecordingType is the canonical type used for chat recents routing.
+const chatRecordingType = "Chat"
 
 // syncRecents rebuilds the list from the recents store.
 func (v *MyStuff) syncRecents() {
@@ -230,11 +230,11 @@ func (v *MyStuff) openSelected() tea.Cmd {
 			scope.ProjectID = pid
 		}
 
-		// Campfire entries should reopen the campfire view, not detail
-		if item.Description == campfireRecordingType {
+		// Chat entries should reopen the chat view, not detail
+		if item.Description == chatRecordingType {
 			scope.ToolType = "chat"
 			scope.ToolID = recordingID
-			return workspace.Navigate(workspace.ViewCampfire, scope)
+			return workspace.Navigate(workspace.ViewChat, scope)
 		}
 
 		scope.RecordingID = recordingID

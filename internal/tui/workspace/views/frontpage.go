@@ -25,7 +25,7 @@ const (
 	burstCold                  // everything else
 )
 
-// FrontPage is the campfire overview view showing all campfire rooms
+// FrontPage is the chat overview view showing all chat rooms
 // with burst tiers (Hot/Warm/Cold) based on recent activity.
 type FrontPage struct {
 	session *workspace.Session
@@ -55,7 +55,7 @@ func NewFrontPage(session *workspace.Session) *FrontPage {
 	s.Style = lipgloss.NewStyle().Foreground(styles.Theme().Primary)
 
 	list := widget.NewList(styles)
-	list.SetEmptyText("No campfire rooms found.")
+	list.SetEmptyText("No chat rooms found.")
 	list.SetFocused(true)
 
 	return &FrontPage{
@@ -175,7 +175,7 @@ func (f *FrontPage) View() string {
 			Width(f.width).
 			Height(f.height).
 			Padding(1, 2).
-			Render(f.spinner.View() + " Loading campfire overview\u2026")
+			Render(f.spinner.View() + " Loading chat overview\u2026")
 	}
 	return f.list.View()
 }
@@ -202,11 +202,11 @@ func (f *FrontPage) rebuildList() {
 	var items []widget.ListItem
 
 	if digestSnap.Usable() && len(digestSnap.Data) > 0 {
-		items = append(items, widget.ListItem{Title: "Campfires", Header: true})
+		items = append(items, widget.ListItem{Title: "Chats", Header: true})
 		items = append(items, f.digestItems(digestSnap.Data)...)
 	} else if roomSnap.Usable() && len(roomSnap.Data) > 0 {
 		// Fallback: just room names (plain text for filtering)
-		items = append(items, widget.ListItem{Title: "Campfires", Header: true})
+		items = append(items, widget.ListItem{Title: "Chats", Header: true})
 		for _, r := range roomSnap.Data {
 			id := "room:" + r.Key()
 			items = append(items, widget.ListItem{
@@ -266,7 +266,7 @@ func (f *FrontPage) openSelected() tea.Cmd {
 		return nil
 	}
 
-	// Navigate to the single-room campfire view for the selected room
+	// Navigate to the single-room chat view for the selected room
 	scope := f.session.Scope()
 
 	// Extract room info from digest or room maps
@@ -281,15 +281,15 @@ func (f *FrontPage) openSelected() tea.Cmd {
 		scope.AccountID = entry.AccountID
 		scope.ProjectID = entry.ProjectID
 		scope.ToolType = "chat"
-		scope.ToolID = entry.CampfireID
-		return workspace.Navigate(workspace.ViewCampfire, scope)
+		scope.ToolID = entry.ChatID
+		return workspace.Navigate(workspace.ViewChat, scope)
 	}
 	if room, ok := f.roomByID[roomKey]; ok {
 		scope.AccountID = room.AccountID
 		scope.ProjectID = room.ProjectID
 		scope.ToolType = "chat"
-		scope.ToolID = room.CampfireID
-		return workspace.Navigate(workspace.ViewCampfire, scope)
+		scope.ToolID = room.ChatID
+		return workspace.Navigate(workspace.ViewChat, scope)
 	}
 
 	return nil
@@ -353,7 +353,7 @@ func (f *FrontPage) ShortHelp() []key.Binding {
 	}
 	return []key.Binding{
 		key.NewBinding(key.WithKeys("j/k"), key.WithHelp("j/k", "navigate")),
-		key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open campfire")),
+		key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open chat")),
 	}
 }
 
@@ -361,7 +361,7 @@ func (f *FrontPage) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{
 			key.NewBinding(key.WithKeys("j/k"), key.WithHelp("j/k", "navigate")),
-			key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open campfire")),
+			key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open chat")),
 		},
 	}
 }

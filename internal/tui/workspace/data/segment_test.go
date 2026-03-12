@@ -9,12 +9,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func makeRoom(account string, project, campfire int64) RoomID {
-	return RoomID{AccountID: account, ProjectID: project, CampfireID: campfire}
+func makeRoom(account string, project, chatID int64) RoomID {
+	return RoomID{AccountID: account, ProjectID: project, ChatID: chatID}
 }
 
-func makeLine(id int64, creator, body string, ts time.Time) CampfireLineInfo {
-	return CampfireLineInfo{
+func makeLine(id int64, creator, body string, ts time.Time) ChatLineInfo {
+	return ChatLineInfo{
 		ID:          id,
 		Creator:     creator,
 		Body:        body,
@@ -28,7 +28,7 @@ func TestSegmentBasicGrouping(t *testing.T) {
 	room := makeRoom("acct1", 1, 100)
 	t0 := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 
-	lines := []CampfireLineInfo{
+	lines := []ChatLineInfo{
 		makeLine(1, "Alice", "hello", t0),
 		makeLine(2, "Bob", "hi there", t0.Add(10*time.Second)),
 		makeLine(3, "Alice", "how are you?", t0.Add(20*time.Second)),
@@ -49,7 +49,7 @@ func TestSegmentTemporalSplit(t *testing.T) {
 	room := makeRoom("acct1", 1, 100)
 	t0 := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 
-	lines := []CampfireLineInfo{
+	lines := []ChatLineInfo{
 		makeLine(1, "Alice", "hello", t0),
 		makeLine(2, "Bob", "hi", t0.Add(30*time.Second)),
 		// Big gap — new segment
@@ -75,7 +75,7 @@ func TestSegmentParticipantContinuity(t *testing.T) {
 	// Build up a conversation so returning speakers are recognized.
 	// Alice starts, Alice continues (same speaker), Bob joins (temporal alone enough),
 	// Alice returns — participant continuity (0.20) boosts the score.
-	lines := []CampfireLineInfo{
+	lines := []ChatLineInfo{
 		makeLine(1, "Alice", "starting discussion", t0),
 		makeLine(2, "Alice", "more thoughts", t0.Add(10*time.Second)),
 		makeLine(3, "Bob", "interesting point", t0.Add(20*time.Second)),
@@ -99,7 +99,7 @@ func TestSegmentMentionChain(t *testing.T) {
 	t0 := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 
 	mentionHTML := `Hey <bc-attachment sgid="abc" content-type="application/vnd.basecamp.mention">@Bob</bc-attachment> check this`
-	lines := []CampfireLineInfo{
+	lines := []ChatLineInfo{
 		makeLine(1, "Alice", mentionHTML, t0),
 		// Bob replies — mention chain (0.15) + temporal (~0.32) > 0.35
 		makeLine(2, "Bob", "on it", t0.Add(1*time.Minute)),
@@ -118,7 +118,7 @@ func TestSegmentQuestionAnswer(t *testing.T) {
 	room := makeRoom("acct1", 1, 100)
 	t0 := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 
-	lines := []CampfireLineInfo{
+	lines := []ChatLineInfo{
 		makeLine(1, "Alice", "what do you think about the design?", t0),
 		// Bob answers — question-answer (0.10) + temporal (~0.33) > 0.35
 		makeLine(2, "Bob", "looks great to me", t0.Add(50*time.Second)),
@@ -138,7 +138,7 @@ func TestSegmentBurstDetection(t *testing.T) {
 	t0 := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 
 	// Rapid-fire messages — burst detection kicks in at >= 2 lines
-	lines := []CampfireLineInfo{
+	lines := []ChatLineInfo{
 		makeLine(1, "Alice", "hey", t0),
 		makeLine(2, "Bob", "yo", t0.Add(5*time.Second)),
 		makeLine(3, "Alice", "quick thing", t0.Add(10*time.Second)),
@@ -175,7 +175,7 @@ func TestSegmentAnnouncementDetection(t *testing.T) {
 
 	longBody := strings.Repeat("This is a long announcement message. ", 5)
 
-	lines := []CampfireLineInfo{
+	lines := []ChatLineInfo{
 		makeLine(1, "Alice", "chatting about stuff", t0),
 		makeLine(2, "Bob", "yeah", t0.Add(30*time.Second)),
 		// Long message from new speaker after >2 min gap → announcement
@@ -196,7 +196,7 @@ func TestSegmentIngestSnapshotDedup(t *testing.T) {
 	room := makeRoom("acct1", 1, 100)
 	t0 := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 
-	lines := []CampfireLineInfo{
+	lines := []ChatLineInfo{
 		makeLine(1, "Alice", "hello", t0),
 		makeLine(2, "Bob", "hi", t0.Add(10*time.Second)),
 	}
@@ -215,10 +215,10 @@ func TestSegmentIngestSnapshotIncremental(t *testing.T) {
 	room := makeRoom("acct1", 1, 100)
 	t0 := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 
-	batch1 := []CampfireLineInfo{
+	batch1 := []ChatLineInfo{
 		makeLine(1, "Alice", "hello", t0),
 	}
-	batch2 := []CampfireLineInfo{
+	batch2 := []ChatLineInfo{
 		makeLine(1, "Alice", "hello", t0),                        // dup
 		makeLine(2, "Bob", "hi", t0.Add(10*time.Second)),         // new
 		makeLine(3, "Alice", "how goes", t0.Add(20*time.Second)), // new
@@ -237,7 +237,7 @@ func TestSegmentSealStale(t *testing.T) {
 	room := makeRoom("acct1", 1, 100)
 	t0 := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 
-	lines := []CampfireLineInfo{
+	lines := []ChatLineInfo{
 		makeLine(1, "Alice", "hello", t0),
 	}
 	seg.IngestSnapshot(room, "Room1", lines)
@@ -260,7 +260,7 @@ func TestSegmentSealStaleNotYet(t *testing.T) {
 	room := makeRoom("acct1", 1, 100)
 	t0 := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 
-	lines := []CampfireLineInfo{
+	lines := []ChatLineInfo{
 		makeLine(1, "Alice", "hello", t0),
 	}
 	seg.IngestSnapshot(room, "Room1", lines)
@@ -280,7 +280,7 @@ func TestSegmentOrdering(t *testing.T) {
 	room := makeRoom("acct1", 1, 100)
 	t0 := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 
-	lines := []CampfireLineInfo{
+	lines := []ChatLineInfo{
 		makeLine(1, "Alice", "first convo", t0),
 		// Gap causes split
 		makeLine(2, "Bob", "second convo", t0.Add(10*time.Minute)),
@@ -307,10 +307,10 @@ func TestSegmentMultiRoom(t *testing.T) {
 	room2 := makeRoom("acct1", 2, 200)
 	t0 := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 
-	lines1 := []CampfireLineInfo{
+	lines1 := []ChatLineInfo{
 		makeLine(1, "Alice", "hello room1", t0),
 	}
-	lines2 := []CampfireLineInfo{
+	lines2 := []ChatLineInfo{
 		makeLine(1, "Bob", "hello room2", t0.Add(5*time.Second)),
 	}
 
@@ -337,10 +337,10 @@ func TestSegmentAdaptiveGapThreshold(t *testing.T) {
 	t0 := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 	testSeg := &Segment{
 		Lines: []RiverLine{
-			{CampfireLineInfo: makeLine(1, "A", "x", t0)},
-			{CampfireLineInfo: makeLine(2, "B", "y", t0.Add(10*time.Second))},
-			{CampfireLineInfo: makeLine(3, "A", "z", t0.Add(20*time.Second))},
-			{CampfireLineInfo: makeLine(4, "B", "w", t0.Add(30*time.Second))},
+			{ChatLineInfo: makeLine(1, "A", "x", t0)},
+			{ChatLineInfo: makeLine(2, "B", "y", t0.Add(10*time.Second))},
+			{ChatLineInfo: makeLine(3, "A", "z", t0.Add(20*time.Second))},
+			{ChatLineInfo: makeLine(4, "B", "w", t0.Add(30*time.Second))},
 		},
 	}
 
@@ -357,10 +357,10 @@ func TestSegmentAdaptiveGapThresholdSlowCadence(t *testing.T) {
 	t0 := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 	testSeg := &Segment{
 		Lines: []RiverLine{
-			{CampfireLineInfo: makeLine(1, "A", "x", t0)},
-			{CampfireLineInfo: makeLine(2, "B", "y", t0.Add(2*time.Minute))},
-			{CampfireLineInfo: makeLine(3, "A", "z", t0.Add(4*time.Minute))},
-			{CampfireLineInfo: makeLine(4, "B", "w", t0.Add(6*time.Minute))},
+			{ChatLineInfo: makeLine(1, "A", "x", t0)},
+			{ChatLineInfo: makeLine(2, "B", "y", t0.Add(2*time.Minute))},
+			{ChatLineInfo: makeLine(3, "A", "z", t0.Add(4*time.Minute))},
+			{ChatLineInfo: makeLine(4, "B", "w", t0.Add(6*time.Minute))},
 		},
 	}
 
@@ -375,7 +375,7 @@ func TestSegmentAdaptiveGapSingleLine(t *testing.T) {
 
 	testSeg := &Segment{
 		Lines: []RiverLine{
-			{CampfireLineInfo: makeLine(1, "A", "x", time.Now())},
+			{ChatLineInfo: makeLine(1, "A", "x", time.Now())},
 		},
 	}
 
@@ -388,7 +388,7 @@ func TestSegmentEmptyInput(t *testing.T) {
 	room := makeRoom("acct1", 1, 100)
 
 	seg.IngestSnapshot(room, "Room1", nil)
-	seg.IngestSnapshot(room, "Room1", []CampfireLineInfo{})
+	seg.IngestSnapshot(room, "Room1", []ChatLineInfo{})
 
 	assert.Len(t, seg.Segments(), 0)
 	assert.Equal(t, 0, seg.SegmentCount())
@@ -399,7 +399,7 @@ func TestSegmentSingleMessage(t *testing.T) {
 	room := makeRoom("acct1", 1, 100)
 	t0 := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 
-	lines := []CampfireLineInfo{
+	lines := []ChatLineInfo{
 		makeLine(1, "Alice", "only message", t0),
 	}
 	seg.IngestSnapshot(room, "Room1", lines)

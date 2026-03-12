@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Segment is a group of related campfire lines from one room.
+// Segment is a group of related chat lines from one room.
 type Segment struct {
 	RoomID    RoomID
 	RoomName  string
@@ -40,7 +40,7 @@ func DefaultSegmenterConfig() SegmenterConfig {
 	}
 }
 
-// Segmenter groups incoming campfire lines into conversation segments.
+// Segmenter groups incoming chat lines into conversation segments.
 type Segmenter struct {
 	segments   []*Segment
 	openSegs   map[string]*Segment // key is RoomID.Key()
@@ -59,7 +59,7 @@ func NewSegmenter(config SegmenterConfig) *Segmenter {
 
 // IngestSnapshot processes a full snapshot of lines from one room.
 // Only lines with IDs newer than lastSeenID are processed (dedup).
-func (s *Segmenter) IngestSnapshot(room RoomID, roomName string, lines []CampfireLineInfo) {
+func (s *Segmenter) IngestSnapshot(room RoomID, roomName string, lines []ChatLineInfo) {
 	key := room.Key()
 	lastID := s.lastSeenID[key]
 	for _, line := range lines {
@@ -73,12 +73,12 @@ func (s *Segmenter) IngestSnapshot(room RoomID, roomName string, lines []Campfir
 	}
 }
 
-func (s *Segmenter) ingestOne(room RoomID, roomName string, line CampfireLineInfo) {
+func (s *Segmenter) ingestOne(room RoomID, roomName string, line ChatLineInfo) {
 	key := room.Key()
 	rl := RiverLine{
-		CampfireLineInfo: line,
-		Room:             room,
-		RoomName:         roomName,
+		ChatLineInfo: line,
+		Room:         room,
+		RoomName:     roomName,
 	}
 
 	open, exists := s.openSegs[key]

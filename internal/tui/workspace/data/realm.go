@@ -13,7 +13,7 @@ import (
 // Three realms mirror the mobile architecture:
 //   - Global: app lifetime (identity, account list)
 //   - Account: active account session (projects, hey, assignments)
-//   - Project: active project context (todos, campfire, messages)
+//   - Project: active project context (todos, chat, messages)
 type Realm struct {
 	mu              sync.RWMutex
 	name            string

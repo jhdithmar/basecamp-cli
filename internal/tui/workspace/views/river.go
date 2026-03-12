@@ -101,7 +101,7 @@ type watermark struct {
 	lineIDAt  int64 // last-read line ID at time of idle
 }
 
-// River is the multi-campfire river view.
+// River is the multi-chat river view.
 type River struct {
 	session     *workspace.Session
 	styles      *tui.Styles
@@ -112,7 +112,7 @@ type River struct {
 	rooms    []data.BonfireRoomConfig
 	roomPool *data.Pool[[]data.BonfireRoomConfig]
 
-	linePools map[string]*data.Pool[data.CampfireLinesResult]
+	linePools map[string]*data.Pool[data.ChatLinesResult]
 	pollGens  map[string]uint64
 
 	viewport viewport.Model
@@ -166,7 +166,7 @@ func NewRiver(session *workspace.Session) *River {
 		mixerStore:   mixerStore,
 		keys:         defaultRiverKeyMap(),
 		volumes:      make(map[string]int),
-		linePools:    make(map[string]*data.Pool[data.CampfireLinesResult]),
+		linePools:    make(map[string]*data.Pool[data.ChatLinesResult]),
 		pollGens:     make(map[string]uint64),
 		viewport:     viewport.New(),
 		composer:     ti,
@@ -208,7 +208,7 @@ func (r *River) Update(msg tea.Msg) (workspace.View, tea.Cmd) {
 		r.renderSegments()
 		return r, nil
 
-	case workspace.CampfireLineSentMsg:
+	case workspace.ChatLineSentMsg:
 		if msg.Err != nil {
 			return r, workspace.ReportError(msg.Err, "sending message")
 		}
@@ -565,13 +565,13 @@ func (r *River) sendLine(content string) tea.Cmd {
 	if client == nil {
 		return workspace.ReportError(fmt.Errorf("no client for account %s", room.AccountID), "sending message")
 	}
-	campfireID := room.CampfireID
+	chatID := room.ChatID
 	return func() tea.Msg {
-		_, err := client.Campfires().CreateLine(ctx, campfireID, content, (*basecamp.CreateLineOptions)(nil))
+		_, err := client.Campfires().CreateLine(ctx, chatID, content, (*basecamp.CreateLineOptions)(nil))
 		if err != nil {
-			return workspace.CampfireLineSentMsg{Err: err}
+			return workspace.ChatLineSentMsg{Err: err}
 		}
-		return workspace.CampfireLineSentMsg{}
+		return workspace.ChatLineSentMsg{}
 	}
 }
 
@@ -629,7 +629,7 @@ func (r *River) kickOffGapSummaries() tea.Cmd {
 }
 
 func (r *River) gapContentKey(seg *data.Segment) string {
-	return fmt.Sprintf("campfire:%d:gap:%d-%d", seg.RoomID.CampfireID, seg.Lines[0].ID, seg.Lines[len(seg.Lines)-1].ID)
+	return fmt.Sprintf("chat:%d:gap:%d-%d", seg.RoomID.ChatID, seg.Lines[0].ID, seg.Lines[len(seg.Lines)-1].ID)
 }
 
 func (r *River) renderWatermark(b *strings.Builder, theme tui.Theme) {
@@ -659,7 +659,7 @@ func (r *River) renderWatermark(b *strings.Builder, theme tui.Theme) {
 func (r *River) renderSegments() {
 	segments := r.segmenter.Segments()
 	if len(segments) == 0 {
-		r.viewport.SetContent("No messages yet. Waiting for campfire activity...")
+		r.viewport.SetContent("No messages yet. Waiting for chat activity...")
 		return
 	}
 
@@ -971,11 +971,11 @@ func (r *River) renderMixer() string {
 
 func (r *River) View() string {
 	if r.loading {
-		return r.spinner.View() + " Loading campfire rooms..."
+		return r.spinner.View() + " Loading chat rooms..."
 	}
 
 	if len(r.rooms) == 0 {
-		return r.styles.Muted.Render("No campfire rooms found. Join some projects first.")
+		return r.styles.Muted.Render("No chat rooms found. Join some projects first.")
 	}
 
 	theme := r.styles.Theme()

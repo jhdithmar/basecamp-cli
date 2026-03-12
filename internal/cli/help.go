@@ -39,7 +39,7 @@ var curatedCategories = []struct {
 	{
 		heading:  "CORE COMMANDS",
 		category: "Core Commands",
-		include:  map[string]bool{"projects": true, "todos": true, "todolists": true, "messages": true, "campfire": true, "cards": true},
+		include:  map[string]bool{"projects": true, "todos": true, "todolists": true, "messages": true, "chat": true, "cards": true},
 	},
 	{
 		heading:  "SHORTCUTS",
@@ -277,7 +277,7 @@ func renderCommandHelp(cmd *cobra.Command) {
 	}
 
 	// INHERITED FLAGS
-	// Parent-defined persistent flags (--project, --campfire, etc.) always
+	// Parent-defined persistent flags (--project, --chat, etc.) always
 	// show — they carry required context. Root-level global flags are curated
 	// to the essentials so leaf help isn't 20+ lines of noise.
 	inherited := filterInheritedFlags(cmd)

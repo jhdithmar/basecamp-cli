@@ -92,8 +92,8 @@ type Recording struct {
 	Creator   Person `json:"creator"`
 }
 
-// CampfireLine represents a campfire chat line.
-type CampfireLine struct {
+// ChatLine represents a chat line.
+type ChatLine struct {
 	ID        int64  `json:"id"`
 	Content   string `json:"content"`
 	CreatedAt string `json:"created_at"`

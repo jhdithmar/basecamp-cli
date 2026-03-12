@@ -15,8 +15,8 @@ import (
 	"github.com/basecamp/basecamp-cli/internal/tui/workspace/widget"
 )
 
-// Pings shows 1:1 campfire threads across all accounts.
-// Discovery: list all campfires per account, identify 1:1 rooms,
+// Pings shows 1:1 chat threads across all accounts.
+// Discovery: list all chats per account, identify 1:1 rooms,
 // fetch the latest line from each.
 type Pings struct {
 	session *workspace.Session
@@ -180,7 +180,7 @@ func (v *Pings) syncRooms(rooms []workspace.PingRoomInfo) {
 			items = append(items, widget.ListItem{Title: group[0].Account, Header: true})
 		}
 		for _, r := range group {
-			id := fmt.Sprintf("%s:%d-%d", r.AccountID, r.ProjectID, r.CampfireID)
+			id := fmt.Sprintf("%s:%d-%d", r.AccountID, r.ProjectID, r.ChatID)
 			v.roomMeta[id] = r
 			items = append(items, widget.ListItem{
 				ID:          id,
@@ -205,11 +205,11 @@ func (v *Pings) openSelected() tea.Cmd {
 		return nil
 	}
 
-	// Navigate to campfire view for this 1:1 room
+	// Navigate to chat view for this 1:1 room
 	scope := v.session.Scope()
 	scope.AccountID = meta.AccountID
 	scope.ProjectID = meta.ProjectID
 	scope.ToolType = "chat"
-	scope.ToolID = meta.CampfireID
-	return workspace.Navigate(workspace.ViewCampfire, scope)
+	scope.ToolID = meta.ChatID
+	return workspace.Navigate(workspace.ViewChat, scope)
 }

@@ -191,7 +191,7 @@ func (h *Hub) Assignments() *Pool[[]AssignmentInfo] {
 	return p
 }
 
-// PingRooms returns a global-scope pool of 1:1 campfire threads.
+// PingRooms returns a global-scope pool of 1:1 chat threads.
 func (h *Hub) PingRooms() *Pool[[]PingRoomInfo] {
 	p := RealmPool(h.Global(), "ping-rooms", func() *Pool[[]PingRoomInfo] {
 		return NewPool("ping-rooms", PoolConfig{
@@ -236,7 +236,7 @@ func (h *Hub) PingRooms() *Pool[[]PingRoomInfo] {
 							projectID = cf.Bucket.ID
 						}
 						rooms = append(rooms, PingRoomInfo{
-							CampfireID:  cf.ID,
+							ChatID:      cf.ID,
 							ProjectID:   projectID,
 							PersonName:  cf.Title,
 							Account:     acct.Name,
@@ -265,9 +265,9 @@ func (h *Hub) PingRooms() *Pool[[]PingRoomInfo] {
 	return p
 }
 
-// BonfireRooms returns a global-scope pool of campfire rooms from bookmarked
+// BonfireRooms returns a global-scope pool of chat rooms from bookmarked
 // and recently visited projects. Uses FanOut like PingRooms but filters for
-// project campfires (not 1:1 pings). For accounts with no bookmarks, falls back
+// project chats (not 1:1 pings). For accounts with no bookmarks, falls back
 // to recently visited projects (from recents store). The RoomStore (if configured
 // via SetRoomStore) can further narrow or widen via explicit includes/excludes.
 func (h *Hub) BonfireRooms() *Pool[[]BonfireRoomConfig] {
@@ -277,11 +277,11 @@ func (h *Hub) BonfireRooms() *Pool[[]BonfireRoomConfig] {
 			StaleTTL: 5 * time.Minute,
 			PollBase: 120 * time.Second,
 		}, func(ctx context.Context) ([]BonfireRoomConfig, error) {
-			// Fetch all project campfires and bookmarked project IDs per account.
+			// Fetch all project chats and bookmarked project IDs per account.
 			// We need both: the full set (for explicit-include overrides to widen)
 			// and the bookmarked subset (for the default when no overrides exist).
 			type accountRooms struct {
-				all       []BonfireRoomConfig // every project campfire
+				all       []BonfireRoomConfig // every project chat
 				bookmarks map[string]struct{} // keys of bookmarked-project rooms
 			}
 			fetchAccountRooms := func(acct AccountInfo, client *basecamp.AccountClient) (accountRooms, error) {
@@ -312,9 +312,9 @@ func (h *Hub) BonfireRooms() *Pool[[]BonfireRoomConfig] {
 					}
 					rc := BonfireRoomConfig{
 						RoomID: RoomID{
-							AccountID:  acct.ID,
-							ProjectID:  cf.Bucket.ID,
-							CampfireID: cf.ID,
+							AccountID: acct.ID,
+							ProjectID: cf.Bucket.ID,
+							ChatID:    cf.ID,
 						},
 						RoomName:    cf.Title,
 						ProjectName: projectName,
@@ -425,32 +425,32 @@ func (h *Hub) BonfireRooms() *Pool[[]BonfireRoomConfig] {
 	return p
 }
 
-// BonfireLines returns a global-scope pool of campfire lines for a specific room.
+// BonfireLines returns a global-scope pool of chat lines for a specific room.
 // Uses h.multi.ClientFor(room.AccountID) — no EnsureProject needed.
-// Keyed as "bonfire-lines:{accountID}:{projectID}:{campfireID}".
-func (h *Hub) BonfireLines(room RoomID) *Pool[CampfireLinesResult] {
+// Keyed as "bonfire-lines:{accountID}:{projectID}:{chatID}".
+func (h *Hub) BonfireLines(room RoomID) *Pool[ChatLinesResult] {
 	key := fmt.Sprintf("bonfire-lines:%s", room.Key())
-	p := RealmPool(h.Global(), key, func() *Pool[CampfireLinesResult] {
+	p := RealmPool(h.Global(), key, func() *Pool[ChatLinesResult] {
 		return NewPool(key, PoolConfig{
 			FreshTTL: 5 * time.Second,
 			StaleTTL: 30 * time.Second,
 			PollBase: 15 * time.Second,
 			PollMax:  2 * time.Minute,
-		}, func(ctx context.Context) (CampfireLinesResult, error) {
+		}, func(ctx context.Context) (ChatLinesResult, error) {
 			client := h.multi.ClientFor(room.AccountID)
 			if client == nil {
-				return CampfireLinesResult{}, fmt.Errorf("no client for account %s", room.AccountID)
+				return ChatLinesResult{}, fmt.Errorf("no client for account %s", room.AccountID)
 			}
-			result, err := client.Campfires().ListLines(ctx, room.CampfireID, nil)
+			result, err := client.Campfires().ListLines(ctx, room.ChatID, nil)
 			if err != nil {
-				return CampfireLinesResult{}, err
+				return ChatLinesResult{}, err
 			}
-			infos := mapCampfireLines(result.Lines)
+			infos := mapChatLines(result.Lines)
 			// API returns newest-first; reverse for chronological display
 			for i, j := 0, len(infos)-1; i < j; i, j = i+1, j-1 {
 				infos[i], infos[j] = infos[j], infos[i]
 			}
-			return CampfireLinesResult{
+			return ChatLinesResult{
 				Lines:      infos,
 				TotalCount: result.Meta.TotalCount,
 			}, nil
@@ -506,7 +506,7 @@ func (h *Hub) BonfireDigest() *Pool[[]BonfireDigestEntry] {
 						ch <- entry
 						return
 					}
-					lines, err := client.Campfires().ListLines(ctx, rc.CampfireID, nil)
+					lines, err := client.Campfires().ListLines(ctx, rc.ChatID, nil)
 					if err != nil || len(lines.Lines) == 0 {
 						ch <- entry
 						return

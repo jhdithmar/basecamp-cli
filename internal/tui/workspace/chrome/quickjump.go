@@ -294,7 +294,7 @@ func toolDisplayName(name string) string {
 	case "message_board":
 		return "Message Board"
 	case "chat":
-		return "Campfire"
+		return "Chat"
 	case "schedule":
 		return "Schedule"
 	case "questionnaire":

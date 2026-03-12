@@ -12,7 +12,7 @@ a face.
 Right-aligned in the existing status bar. One line, unobtrusive.
 
 ```
- Campfire > Messages                    j/k navigate  enter open  ● 4 fresh · 180ms
+ Chat > Messages                        j/k navigate  enter open  ● 4 fresh · 180ms
 ```
 
 ### What it shows

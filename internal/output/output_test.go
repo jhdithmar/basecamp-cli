@@ -2230,7 +2230,7 @@ func TestRenderDataStripsEscapesFromTopLevelStrings(t *testing.T) {
 	}
 }
 
-func TestWithEntityCampfireLineStyledOutput(t *testing.T) {
+func TestWithEntityChatLineStyledOutput(t *testing.T) {
 	var buf bytes.Buffer
 	w := New(Options{
 		Format: FormatStyled,
@@ -2246,22 +2246,22 @@ func TestWithEntityCampfireLineStyledOutput(t *testing.T) {
 		},
 	}
 	err := w.OK(data,
-		WithEntity("campfire_line"),
+		WithEntity("chat_line"),
 		WithSummary("1 messages"),
 	)
 	require.NoError(t, err)
 
 	output := buf.String()
 	assert.Contains(t, output, "Hello world",
-		"campfire_line list should collapse multiline content")
+		"chat_line list should collapse multiline content")
 	assert.Contains(t, output, "Alice")
 	assert.NotContains(t, output, "title",
-		"campfire_line must not show a title column")
+		"chat_line must not show a title column")
 	assert.NotContains(t, output, "Title",
-		"campfire_line must not show a Title column")
+		"chat_line must not show a Title column")
 }
 
-func TestWithEntityCampfireLineMarkdownOutput(t *testing.T) {
+func TestWithEntityChatLineMarkdownOutput(t *testing.T) {
 	var buf bytes.Buffer
 	w := New(Options{
 		Format: FormatMarkdown,
@@ -2277,7 +2277,7 @@ func TestWithEntityCampfireLineMarkdownOutput(t *testing.T) {
 		},
 	}
 	err := w.OK(data,
-		WithEntity("campfire_line"),
+		WithEntity("chat_line"),
 		WithSummary("1 messages"),
 	)
 	require.NoError(t, err)
@@ -2286,7 +2286,7 @@ func TestWithEntityCampfireLineMarkdownOutput(t *testing.T) {
 	assert.NotContains(t, output, "\x1b",
 		"markdown output must not contain ANSI codes")
 	assert.Contains(t, output, "Hello world",
-		"campfire_line markdown should collapse multiline content")
+		"chat_line markdown should collapse multiline content")
 	assert.Contains(t, output, "Alice")
 }
 

@@ -110,13 +110,13 @@ func TestURLParseDocumentURL(t *testing.T) {
 	assertStringPtr(t, parsed.TypeSingular, "document", "type_singular")
 }
 
-func TestURLParseCampfireURL(t *testing.T) {
+func TestURLParseChatURL(t *testing.T) {
 	resp, err := parseURLWithOutput(t, "https://3.basecamp.com/123/buckets/456/chats/789")
 	require.NoError(t, err)
 
 	parsed := getParsedURL(t, resp)
 	assertStringPtr(t, parsed.Type, "chats", "type")
-	assertStringPtr(t, parsed.TypeSingular, "campfire", "type_singular")
+	assertStringPtr(t, parsed.TypeSingular, "chat", "type_singular")
 }
 
 func TestURLParseCardURLWithNestedPath(t *testing.T) {

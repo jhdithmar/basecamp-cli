@@ -138,8 +138,8 @@ func viewFactory(target workspace.ViewTarget, session *workspace.Session, scope 
 		return views.NewDock(session, scope.ProjectID)
 	case workspace.ViewTodos:
 		return views.NewTodos(session)
-	case workspace.ViewCampfire:
-		return views.NewCampfire(session)
+	case workspace.ViewChat:
+		return views.NewChat(session)
 	case workspace.ViewCards:
 		return views.NewCards(session)
 	case workspace.ViewMessages:

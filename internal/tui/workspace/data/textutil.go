@@ -95,7 +95,7 @@ var reBlockTag = regexp.MustCompile(`(?i)</?(div|p|br|blockquote|pre|h[1-6])\b[^
 // reWhitespace collapses runs of whitespace into a single space.
 var reWhitespace = regexp.MustCompile(`\s{2,}`)
 
-// RiverText converts campfire line HTML to compact plain text for the river view.
+// RiverText converts chat line HTML to compact plain text for the river view.
 // Replaces attachments with a paperclip indicator, strips remaining tags,
 // and collapses whitespace to a single line.
 func RiverText(html string) string {

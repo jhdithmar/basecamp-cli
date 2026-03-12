@@ -24,7 +24,7 @@ func testDockView() *Dock {
 	list.SetSize(80, 24)
 	list.SetItems([]widget.ListItem{
 		{ID: "10", Title: "Todos", Extra: "t"},
-		{ID: "11", Title: "Campfire", Extra: "c"},
+		{ID: "11", Title: "Chat", Extra: "c"},
 		{ID: "12", Title: "Messages", Extra: "m"},
 	})
 

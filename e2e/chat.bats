@@ -1,13 +1,13 @@
 #!/usr/bin/env bats
-# campfire.bats - Test campfire command error handling
+# chat.bats - Test chat command error handling
 
 load test_helper
 
 
 # Help
 
-@test "campfire without subcommand shows help" {
-  run basecamp campfire
+@test "chat without subcommand shows help" {
+  run basecamp chat
   assert_success
   assert_output_contains "COMMANDS"
 }
@@ -15,20 +15,20 @@ load test_helper
 
 # Flag parsing errors
 
-@test "campfire --project without value shows error" {
+@test "chat --project without value shows error" {
   create_credentials
   create_global_config '{"account_id": 99999}'
 
-  run basecamp campfire list --project
+  run basecamp chat list --project
   assert_failure
   assert_output_contains "--project requires a value"
 }
 
-@test "campfire messages --limit without value shows error" {
+@test "chat messages --limit without value shows error" {
   create_credentials
   create_global_config '{"account_id": 99999, "project_id": 123}'
 
-  run basecamp campfire messages --limit
+  run basecamp chat messages --limit
   assert_failure
   assert_output_contains "--limit requires a value"
 }
@@ -36,39 +36,39 @@ load test_helper
 
 # Missing context errors
 
-@test "campfire list without project and without --all shows error" {
+@test "chat list without project and without --all shows error" {
   create_credentials
   create_global_config '{"account_id": 99999}'
 
-  run basecamp campfire list
+  run basecamp chat list
   assert_failure
   assert_output_contains "project"
 }
 
-@test "campfire messages without project shows error" {
+@test "chat messages without project shows error" {
   create_credentials
   create_global_config '{"account_id": 99999}'
 
-  run basecamp campfire messages
+  run basecamp chat messages
   assert_failure
   assert_output_contains "project"
 }
 
-@test "campfire post without content shows error" {
+@test "chat post without content shows error" {
   create_credentials
   create_global_config '{"account_id": 99999, "project_id": 123}'
 
-  run basecamp campfire post
+  run basecamp chat post
   assert_failure
   assert_json_value '.error' '<message> required'
   assert_json_value '.code' 'usage'
 }
 
-@test "campfire post with whitespace-only content shows error" {
+@test "chat post with whitespace-only content shows error" {
   create_credentials
   create_global_config '{"account_id": 99999, "project_id": 123}'
 
-  run basecamp campfire post " "
+  run basecamp chat post " "
   assert_failure
   assert_json_value '.error' '<message> required'
   assert_json_value '.code' 'usage'
@@ -77,20 +77,20 @@ load test_helper
 
 # Line show/delete errors
 
-@test "campfire line without id shows error" {
+@test "chat line without id shows error" {
   create_credentials
   create_global_config '{"account_id": 99999, "project_id": 123}'
 
-  run basecamp campfire line
+  run basecamp chat line
   assert_failure
   assert_output_contains "ID required"
 }
 
-@test "campfire delete without id shows error" {
+@test "chat delete without id shows error" {
   create_credentials
   create_global_config '{"account_id": 99999, "project_id": 123}'
 
-  run basecamp campfire delete
+  run basecamp chat delete
   assert_failure
   assert_output_contains "ID required"
 }
@@ -98,40 +98,40 @@ load test_helper
 
 # Help flag
 
-@test "campfire --help shows help" {
+@test "chat --help shows help" {
   create_credentials
   create_global_config '{"account_id": 99999}'
 
-  run basecamp campfire --help
+  run basecamp chat --help
   assert_success
-  assert_output_contains "basecamp campfire"
-  assert_output_contains "Campfire"
+  assert_output_contains "basecamp chat"
+  assert_output_contains "chat"
 }
 
-@test "campfire -h shows help" {
+@test "chat -h shows help" {
   create_credentials
   create_global_config '{"account_id": 99999}'
 
-  run basecamp campfire -h
+  run basecamp chat -h
   assert_success
-  assert_output_contains "basecamp campfire"
+  assert_output_contains "basecamp chat"
 }
 
-@test "campfire post help documents --content-type flag" {
+@test "chat post help documents --content-type flag" {
   create_credentials
   create_global_config '{"account_id": 99999}'
 
-  run basecamp campfire post --help
+  run basecamp chat post --help
   assert_success
   assert_output_contains "--content-type"
   assert_output_contains "rich text"
 }
 
-@test "campfire list help documents --all flag" {
+@test "chat list help documents --all flag" {
   create_credentials
   create_global_config '{"account_id": 99999}'
 
-  run basecamp campfire list --help
+  run basecamp chat list --help
   assert_success
   assert_output_contains "--all"
   assert_output_contains "account"
@@ -140,11 +140,11 @@ load test_helper
 
 # Unknown action - Cobra treats unknown args as command arguments, not subcommands
 
-@test "campfire unknown action shows help" {
+@test "chat unknown action shows help" {
   create_credentials
   create_global_config '{"account_id": 99999}'
 
-  run basecamp campfire foobar
+  run basecamp chat foobar
   # Parent command with no RunE — cobra shows help for unknown subcommands
   assert_success
 }
@@ -152,11 +152,11 @@ load test_helper
 
 # Error envelope structure
 
-@test "campfire error returns proper JSON envelope" {
+@test "chat error returns proper JSON envelope" {
   create_credentials
   create_global_config '{"account_id": 99999}'
 
-  run basecamp campfire list
+  run basecamp chat list
   assert_failure
   assert_json_value '.ok' 'false'
   assert_json_value '.code' 'usage'

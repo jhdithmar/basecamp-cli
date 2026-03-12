@@ -54,7 +54,7 @@ func parseBasecampURL(raw string) (workspace.ViewTarget, workspace.Scope, error)
 			recordingID, _ := strconv.ParseInt(parsed.RecordingID, 10, 64)
 			scope.RecordingID = recordingID
 
-			// Campfire chat URLs → ViewCampfire (not ViewDetail).
+			// Chat URLs → ViewChat (not ViewDetail).
 			// Handles both /chats/{id} and /chats/{chatID}/lines/{lineID}
 			// (for the latter, urlarg returns Type="lines" with the line as
 			// RecordingID; we walk up the raw path to find the parent chat).
@@ -62,14 +62,14 @@ func parseBasecampURL(raw string) (workspace.ViewTarget, workspace.Scope, error)
 				scope.ToolType = "chat"
 				scope.ToolID = recordingID
 				scope.RecordingID = 0 // chat ID is ToolID, not a recording
-				return workspace.ViewCampfire, scope, nil
+				return workspace.ViewChat, scope, nil
 			}
 			if parsed.Type == "lines" {
 				if chatID := extractParentChatID(raw); chatID != 0 {
 					scope.ToolType = "chat"
 					scope.ToolID = chatID
 					scope.RecordingID = 0
-					return workspace.ViewCampfire, scope, nil
+					return workspace.ViewChat, scope, nil
 				}
 			}
 

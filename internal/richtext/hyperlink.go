@@ -43,7 +43,7 @@ var reMarkdownLink = regexp.MustCompile(`\[([^\]]+)\]\((https?://(?:[^()\s]*|\([
 
 // LinkifyMarkdownLinks converts markdown-style [text](url) links to OSC 8
 // terminal hyperlinks where the link text is clickable.
-// Use this for rendering paths that bypass glamour (e.g., campfire).
+// Use this for rendering paths that bypass glamour (e.g., chat).
 func LinkifyMarkdownLinks(text string) string {
 	return reMarkdownLink.ReplaceAllStringFunc(text, func(s string) string {
 		m := reMarkdownLink.FindStringSubmatch(s)

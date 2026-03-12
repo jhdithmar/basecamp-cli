@@ -91,7 +91,7 @@ func targetName(t ViewTarget) string {
 		ViewProjects:       "Projects",
 		ViewDock:           "Dock",
 		ViewTodos:          "Todos",
-		ViewCampfire:       "Campfire",
+		ViewChat:           "Chat",
 		ViewHey:            "Hey!",
 		ViewCards:          "Cards",
 		ViewMessages:       "Messages",
@@ -704,14 +704,14 @@ func TestWorkspace_CrossAccountNavigateRotatesHubRealm(t *testing.T) {
 	// Verify starting state.
 	assert.Equal(t, "account-A", session.Scope().AccountID)
 
-	// Simulate cross-account navigation (Pings → Campfire on account B).
+	// Simulate cross-account navigation (Pings → Chat on account B).
 	scope := Scope{
 		AccountID: "account-B",
 		ProjectID: 42,
 		ToolType:  "chat",
 		ToolID:    99,
 	}
-	w.Update(NavigateMsg{Target: ViewCampfire, Scope: scope})
+	w.Update(NavigateMsg{Target: ViewChat, Scope: scope})
 
 	// Hub account realm should have rotated to account-B.
 	acctRealm := hub.Account()
@@ -744,7 +744,7 @@ func TestWorkspace_CrossAccountNavigateUpdatesAccountName(t *testing.T) {
 		ToolType:  "chat",
 		ToolID:    99,
 	}
-	w.Update(NavigateMsg{Target: ViewCampfire, Scope: scope})
+	w.Update(NavigateMsg{Target: ViewChat, Scope: scope})
 
 	// Scope should have the resolved account name.
 	assert.Equal(t, "Beta Inc", session.Scope().AccountName,
@@ -774,7 +774,7 @@ func TestWorkspace_CrossAccountNavigateOverwritesStaleAccountName(t *testing.T) 
 		ToolType:    "chat",
 		ToolID:      99,
 	}
-	w.Update(NavigateMsg{Target: ViewCampfire, Scope: scope})
+	w.Update(NavigateMsg{Target: ViewChat, Scope: scope})
 
 	// Must overwrite stale name with correct one.
 	assert.Equal(t, "Beta Inc", session.Scope().AccountName,
@@ -804,7 +804,7 @@ func TestWorkspace_SameAccountNavigateNoRealmTeardown(t *testing.T) {
 func TestWorkspace_ForwardNavigateToNonProjectLeavesRealm(t *testing.T) {
 	session := testSessionWithContext("account-A", "Alpha Corp")
 	w := testWorkspaceWithSession(session)
-	pushTestView(w, "Campfire")
+	pushTestView(w, "Chat")
 
 	hub := session.Hub()
 	hub.EnsureAccount("account-A")
@@ -911,7 +911,7 @@ func TestViewTarget_IsGlobal(t *testing.T) {
 		assert.True(t, vt.IsGlobal(), "ViewTarget %d should be global", vt)
 	}
 
-	scoped := []ViewTarget{ViewDock, ViewTodos, ViewCampfire, ViewCards,
+	scoped := []ViewTarget{ViewDock, ViewTodos, ViewChat, ViewCards,
 		ViewMessages, ViewMyStuff, ViewPeople, ViewDetail, ViewSchedule,
 		ViewDocsFiles, ViewCheckins, ViewForwards, ViewCompose, ViewTimeline}
 	for _, vt := range scoped {
@@ -1578,7 +1578,7 @@ func TestWorkspace_OpenInBrowser_FallsBackToSessionScope(t *testing.T) {
 	}
 
 	// Push a plain testView (does NOT implement FocusedRecording).
-	pushTestView(w, "Campfire")
+	pushTestView(w, "Chat")
 
 	w.handleKey(keyMsg("o"))
 

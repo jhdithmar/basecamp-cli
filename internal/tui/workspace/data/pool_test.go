@@ -134,7 +134,7 @@ func TestPoolFetchIfStaleNoTTL(t *testing.T) {
 }
 
 // Regression: proves that poll-driven FetchIfStale actually triggers a second
-// fetch after TTL expiry — caught the campfire "forever fresh" bug where
+// fetch after TTL expiry — caught the chat "forever fresh" bug where
 // FreshTTL was 0 but the view polled with FetchIfStale.
 func TestPoolPollTriggersRefetchAfterTTL(t *testing.T) {
 	var fetchCount atomic.Int32

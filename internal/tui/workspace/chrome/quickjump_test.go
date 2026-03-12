@@ -65,7 +65,7 @@ func TestQuickJump_ToolItems_Appear(t *testing.T) {
 		}
 	}
 
-	// Should have tool entries: Basecamp CLI > Todos, > Message Board, > Campfire
+	// Should have tool entries: Basecamp CLI > Todos, > Message Board, > Chat
 	// and Hey Email > Todos (schedule is disabled)
 	require.Len(t, toolItems, 4, "expected 4 tool items (3 from CLI + 1 from Hey)")
 
@@ -76,7 +76,7 @@ func TestQuickJump_ToolItems_Appear(t *testing.T) {
 	}
 	assert.Contains(t, titles, "Basecamp CLI > Todos")
 	assert.Contains(t, titles, "Basecamp CLI > Message Board")
-	assert.Contains(t, titles, "Basecamp CLI > Campfire")
+	assert.Contains(t, titles, "Basecamp CLI > Chat")
 	assert.Contains(t, titles, "Hey Email > Todos")
 }
 

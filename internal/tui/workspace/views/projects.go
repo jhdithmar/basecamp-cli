@@ -107,7 +107,7 @@ func (v *Projects) ShortHelp() []key.Binding {
 			key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
 			key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
 			v.dockKeys.Todos,
-			v.dockKeys.Campfire,
+			v.dockKeys.Chat,
 			v.dockKeys.Messages,
 			v.dockKeys.Cards,
 			key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "activity")),
@@ -294,8 +294,8 @@ func (v *Projects) handleToolKey(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	case key.Matches(msg, dk.Todos):
 		return v.navigateToTool("todoset", workspace.ViewTodos)
-	case key.Matches(msg, dk.Campfire):
-		return v.navigateToTool("chat", workspace.ViewCampfire)
+	case key.Matches(msg, dk.Chat):
+		return v.navigateToTool("chat", workspace.ViewChat)
 	case key.Matches(msg, dk.Messages):
 		return v.navigateToTool("message_board", workspace.ViewMessages)
 	case key.Matches(msg, dk.Cards):
@@ -592,7 +592,7 @@ func dockToolDisplayName(name string) string {
 	case "message_board":
 		return "Message Board"
 	case "chat":
-		return "Campfire"
+		return "Chat"
 	case "schedule":
 		return "Schedule"
 	case "questionnaire":
@@ -632,7 +632,7 @@ func toolNameToView(name string) (workspace.ViewTarget, bool) {
 	case "todoset":
 		return workspace.ViewTodos, true
 	case "chat":
-		return workspace.ViewCampfire, true
+		return workspace.ViewChat, true
 	case "message_board":
 		return workspace.ViewMessages, true
 	case "kanban_board":

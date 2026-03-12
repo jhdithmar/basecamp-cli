@@ -162,7 +162,7 @@ func WithContext(ctx context.Context) ComposerOption {
 }
 
 // WithAttachmentsDisabled prevents the composer from accepting file attachments.
-// Used for views like Campfire where the BC3 API does not support file uploads.
+// Used for views like Chat where the BC3 API does not support file uploads.
 func WithAttachmentsDisabled() ComposerOption {
 	return func(c *Composer) { c.attachDisabled = true }
 }

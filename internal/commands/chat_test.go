@@ -23,19 +23,19 @@ import (
 	"github.com/basecamp/basecamp-cli/internal/output"
 )
 
-// campfireTestTokenProvider is a mock token provider for tests.
-type campfireTestTokenProvider struct{}
+// chatTestTokenProvider is a mock token provider for tests.
+type chatTestTokenProvider struct{}
 
-func (t *campfireTestTokenProvider) AccessToken(_ context.Context) (string, error) {
+func (t *chatTestTokenProvider) AccessToken(_ context.Context) (string, error) {
 	return "test-token", nil
 }
 
-// mockCampfireCreateTransport handles resolver API calls and captures the create request.
-type mockCampfireCreateTransport struct {
+// mockChatCreateTransport handles resolver API calls and captures the create request.
+type mockChatCreateTransport struct {
 	capturedBody []byte
 }
 
-func (t *mockCampfireCreateTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+func (t *mockChatCreateTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	header := make(http.Header)
 	header.Set("Content-Type", "application/json")
 
@@ -46,7 +46,7 @@ func (t *mockCampfireCreateTransport) RoundTrip(req *http.Request) (*http.Respon
 			// Projects list - return array
 			body = `[{"id": 123, "name": "Test Project"}]`
 		} else if strings.Contains(req.URL.Path, "/projects/") {
-			// Single project lookup - return project with chat (campfire) in dock
+			// Single project lookup - return project with chat in dock
 			body = `{"id": 123, "dock": [{"name": "chat", "id": 789, "enabled": true}]}`
 		} else if strings.Contains(req.URL.Path, "/chats/") && strings.Contains(req.URL.Path, "/lines.json") {
 			// List lines
@@ -80,13 +80,13 @@ func (t *mockCampfireCreateTransport) RoundTrip(req *http.Request) (*http.Respon
 	return nil, errors.New("unexpected request")
 }
 
-// mockCampfireDeleteTransport handles resolver API calls and responds to DELETE requests.
-type mockCampfireDeleteTransport struct {
+// mockChatDeleteTransport handles resolver API calls and responds to DELETE requests.
+type mockChatDeleteTransport struct {
 	capturedMethod string
 	capturedPath   string
 }
 
-func (t *mockCampfireDeleteTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+func (t *mockChatDeleteTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	header := make(http.Header)
 	header.Set("Content-Type", "application/json")
 
@@ -119,7 +119,7 @@ func (t *mockCampfireDeleteTransport) RoundTrip(req *http.Request) (*http.Respon
 	return nil, errors.New("unexpected request")
 }
 
-func newCampfireDeleteTestApp(transport http.RoundTripper) (*appctx.App, *bytes.Buffer) {
+func newChatDeleteTestApp(transport http.RoundTripper) (*appctx.App, *bytes.Buffer) {
 	buf := &bytes.Buffer{}
 	cfg := &config.Config{
 		AccountID: "99999",
@@ -127,7 +127,7 @@ func newCampfireDeleteTestApp(transport http.RoundTripper) (*appctx.App, *bytes.
 	}
 
 	sdkCfg := &basecamp.Config{}
-	sdkClient := basecamp.NewClient(sdkCfg, &campfireTestTokenProvider{},
+	sdkClient := basecamp.NewClient(sdkCfg, &chatTestTokenProvider{},
 		basecamp.WithTransport(transport),
 		basecamp.WithMaxRetries(1),
 	)
@@ -147,8 +147,8 @@ func newCampfireDeleteTestApp(transport http.RoundTripper) (*appctx.App, *bytes.
 	return app, buf
 }
 
-// executeCampfireCommand executes a cobra command with the given args.
-func executeCampfireCommand(cmd *cobra.Command, app *appctx.App, args ...string) error {
+// executeChatCommand executes a cobra command with the given args.
+func executeChatCommand(cmd *cobra.Command, app *appctx.App, args ...string) error {
 	cmd.SetArgs(args)
 	ctx := appctx.WithApp(context.Background(), app)
 	cmd.SetContext(ctx)
@@ -160,13 +160,13 @@ func executeCampfireCommand(cmd *cobra.Command, app *appctx.App, args ...string)
 	return cmd.Execute()
 }
 
-// TestCampfirePostContentIsPlainText verifies that campfire line content is sent as plain text,
-// not wrapped in HTML tags. The Basecamp API forces campfire lines to text-only and
+// TestChatPostContentIsPlainText verifies that chat line content is sent as plain text,
+// not wrapped in HTML tags. The Basecamp API forces chat lines to text-only and
 // HTML-escapes the content, so sending HTML would display literal tags.
-func TestCampfirePostContentIsPlainText(t *testing.T) {
+func TestChatPostContentIsPlainText(t *testing.T) {
 	t.Setenv("BASECAMP_NO_KEYRING", "1")
 
-	transport := &mockCampfireCreateTransport{}
+	transport := &mockChatCreateTransport{}
 	buf := &bytes.Buffer{}
 	cfg := &config.Config{
 		AccountID: "99999",
@@ -174,7 +174,7 @@ func TestCampfirePostContentIsPlainText(t *testing.T) {
 	}
 
 	sdkCfg := &basecamp.Config{}
-	sdkClient := basecamp.NewClient(sdkCfg, &campfireTestTokenProvider{},
+	sdkClient := basecamp.NewClient(sdkCfg, &chatTestTokenProvider{},
 		basecamp.WithTransport(transport),
 		basecamp.WithMaxRetries(1),
 	)
@@ -192,10 +192,10 @@ func TestCampfirePostContentIsPlainText(t *testing.T) {
 		}),
 	}
 
-	cmd := NewCampfireCmd()
+	cmd := NewChatCmd()
 	plainTextContent := "Hello team!"
 
-	err := executeCampfireCommand(cmd, app, "post", plainTextContent)
+	err := executeChatCommand(cmd, app, "post", plainTextContent)
 	require.NoError(t, err, "command should succeed with mock transport")
 	require.NotEmpty(t, transport.capturedBody, "expected request body to be captured")
 
@@ -208,21 +208,21 @@ func TestCampfirePostContentIsPlainText(t *testing.T) {
 
 	// The content should be exactly what was passed in - plain text, no HTML wrapping
 	assert.Equal(t, plainTextContent, content,
-		"Campfire content should be plain text, not HTML-wrapped")
+		"Chat content should be plain text, not HTML-wrapped")
 
 	// Explicitly verify no HTML tags were added
 	assert.NotContains(t, content, "<p>",
-		"Campfire content should not contain <p> tags")
+		"Chat content should not contain <p> tags")
 	assert.NotContains(t, content, "</p>",
-		"Campfire content should not contain </p> tags")
+		"Chat content should not contain </p> tags")
 }
 
-// TestCampfirePostContentTypeSentInPayload verifies that --content-type is passed through
+// TestChatPostContentTypeSentInPayload verifies that --content-type is passed through
 // to the API request body as content_type.
-func TestCampfirePostContentTypeSentInPayload(t *testing.T) {
+func TestChatPostContentTypeSentInPayload(t *testing.T) {
 	t.Setenv("BASECAMP_NO_KEYRING", "1")
 
-	transport := &mockCampfireCreateTransport{}
+	transport := &mockChatCreateTransport{}
 	buf := &bytes.Buffer{}
 	cfg := &config.Config{
 		AccountID: "99999",
@@ -230,7 +230,7 @@ func TestCampfirePostContentTypeSentInPayload(t *testing.T) {
 	}
 
 	sdkCfg := &basecamp.Config{}
-	sdkClient := basecamp.NewClient(sdkCfg, &campfireTestTokenProvider{},
+	sdkClient := basecamp.NewClient(sdkCfg, &chatTestTokenProvider{},
 		basecamp.WithTransport(transport),
 		basecamp.WithMaxRetries(1),
 	)
@@ -248,8 +248,8 @@ func TestCampfirePostContentTypeSentInPayload(t *testing.T) {
 		}),
 	}
 
-	cmd := NewCampfireCmd()
-	err := executeCampfireCommand(cmd, app, "post", "<b>Hello</b>", "--content-type", "text/html")
+	cmd := NewChatCmd()
+	err := executeChatCommand(cmd, app, "post", "<b>Hello</b>", "--content-type", "text/html")
 	require.NoError(t, err, "command should succeed with mock transport")
 	require.NotEmpty(t, transport.capturedBody, "expected request body to be captured")
 
@@ -261,12 +261,12 @@ func TestCampfirePostContentTypeSentInPayload(t *testing.T) {
 		"content_type should be sent when --content-type is specified")
 }
 
-// TestCampfirePostDefaultOmitsContentType verifies that content_type is not sent
+// TestChatPostDefaultOmitsContentType verifies that content_type is not sent
 // when --content-type is not specified.
-func TestCampfirePostDefaultOmitsContentType(t *testing.T) {
+func TestChatPostDefaultOmitsContentType(t *testing.T) {
 	t.Setenv("BASECAMP_NO_KEYRING", "1")
 
-	transport := &mockCampfireCreateTransport{}
+	transport := &mockChatCreateTransport{}
 	buf := &bytes.Buffer{}
 	cfg := &config.Config{
 		AccountID: "99999",
@@ -274,7 +274,7 @@ func TestCampfirePostDefaultOmitsContentType(t *testing.T) {
 	}
 
 	sdkCfg := &basecamp.Config{}
-	sdkClient := basecamp.NewClient(sdkCfg, &campfireTestTokenProvider{},
+	sdkClient := basecamp.NewClient(sdkCfg, &chatTestTokenProvider{},
 		basecamp.WithTransport(transport),
 		basecamp.WithMaxRetries(1),
 	)
@@ -292,8 +292,8 @@ func TestCampfirePostDefaultOmitsContentType(t *testing.T) {
 		}),
 	}
 
-	cmd := NewCampfireCmd()
-	err := executeCampfireCommand(cmd, app, "post", "Hello team!")
+	cmd := NewChatCmd()
+	err := executeChatCommand(cmd, app, "post", "Hello team!")
 	require.NoError(t, err, "command should succeed with mock transport")
 	require.NotEmpty(t, transport.capturedBody, "expected request body to be captured")
 
@@ -306,11 +306,11 @@ func TestCampfirePostDefaultOmitsContentType(t *testing.T) {
 		"content_type should not be sent when --content-type is not specified")
 }
 
-// mockMultiCampfireTransport returns a project with multiple chat dock entries
-// and serves individual campfire GET requests.
-type mockMultiCampfireTransport struct{}
+// mockMultiChatTransport returns a project with multiple chat dock entries
+// and serves individual chat GET requests.
+type mockMultiChatTransport struct{}
 
-func (t *mockMultiCampfireTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+func (t *mockMultiChatTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	header := make(http.Header)
 	header.Set("Content-Type", "application/json")
 
@@ -364,7 +364,7 @@ func newTestAppWithTransport(t *testing.T, transport http.RoundTripper) (*appctx
 		ProjectID: "123",
 	}
 
-	sdkClient := basecamp.NewClient(&basecamp.Config{}, &campfireTestTokenProvider{},
+	sdkClient := basecamp.NewClient(&basecamp.Config{}, &chatTestTokenProvider{},
 		basecamp.WithTransport(transport),
 		basecamp.WithMaxRetries(1),
 	)
@@ -384,13 +384,13 @@ func newTestAppWithTransport(t *testing.T, transport http.RoundTripper) (*appctx
 	return app, buf
 }
 
-// TestCampfireListMultipleCampfires verifies that `campfire list` succeeds on
-// projects with multiple campfires (no ambiguous error).
-func TestCampfireListMultipleCampfires(t *testing.T) {
-	app, buf := newTestAppWithTransport(t, &mockMultiCampfireTransport{})
+// TestChatListMultipleChats verifies that `chat list` succeeds on
+// projects with multiple chats (no ambiguous error).
+func TestChatListMultipleChats(t *testing.T) {
+	app, buf := newTestAppWithTransport(t, &mockMultiChatTransport{})
 
-	cmd := NewCampfireCmd()
-	err := executeCampfireCommand(cmd, app, "list")
+	cmd := NewChatCmd()
+	err := executeChatCommand(cmd, app, "list")
 	require.NoError(t, err)
 
 	var envelope struct {
@@ -404,13 +404,13 @@ func TestCampfireListMultipleCampfires(t *testing.T) {
 	assert.Contains(t, titles, "Engineering")
 }
 
-// TestCampfireListWithCampfireFlag verifies that `campfire list -c <id>` returns
-// only the specified campfire.
-func TestCampfireListWithCampfireFlag(t *testing.T) {
-	app, buf := newTestAppWithTransport(t, &mockMultiCampfireTransport{})
+// TestChatListWithChatFlag verifies that `chat list -c <id>` returns
+// only the specified chat.
+func TestChatListWithChatFlag(t *testing.T) {
+	app, buf := newTestAppWithTransport(t, &mockMultiChatTransport{})
 
-	cmd := NewCampfireCmd()
-	err := executeCampfireCommand(cmd, app, "list", "--campfire", "1002")
+	cmd := NewChatCmd()
+	err := executeChatCommand(cmd, app, "list", "--chat", "1002")
 	require.NoError(t, err)
 
 	var envelope struct {
@@ -421,12 +421,12 @@ func TestCampfireListWithCampfireFlag(t *testing.T) {
 	assert.Equal(t, "Engineering", envelope.Data[0]["title"])
 }
 
-// mockCampfireDockTransport returns a project whose dock payload is configurable.
-type mockCampfireDockTransport struct {
+// mockChatDockTransport returns a project whose dock payload is configurable.
+type mockChatDockTransport struct {
 	dockJSON string // JSON array for the dock field
 }
 
-func (t *mockCampfireDockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+func (t *mockChatDockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	header := make(http.Header)
 	header.Set("Content-Type", "application/json")
 
@@ -446,34 +446,34 @@ func (t *mockCampfireDockTransport) RoundTrip(req *http.Request) (*http.Response
 	}, nil
 }
 
-// TestCampfireListNoCampfires verifies the not-found error when a project has
+// TestChatListNoChats verifies the not-found error when a project has
 // no chat dock entries at all.
-func TestCampfireListNoCampfires(t *testing.T) {
-	transport := &mockCampfireDockTransport{
+func TestChatListNoChats(t *testing.T) {
+	transport := &mockChatDockTransport{
 		dockJSON: `[{"name": "todoset", "id": 500, "enabled": true}]`,
 	}
 	app, _ := newTestAppWithTransport(t, transport)
 
-	cmd := NewCampfireCmd()
-	err := executeCampfireCommand(cmd, app, "list")
+	cmd := NewChatCmd()
+	err := executeChatCommand(cmd, app, "list")
 	require.Error(t, err)
 
 	var e *output.Error
 	require.ErrorAs(t, err, &e)
 	assert.Equal(t, output.CodeNotFound, e.Code)
-	assert.Contains(t, e.Hint, "no campfire")
+	assert.Contains(t, e.Hint, "no chat")
 }
 
-// TestCampfireListDisabledCampfire verifies the not-found error hints that
-// campfire is disabled when only disabled chat entries exist.
-func TestCampfireListDisabledCampfire(t *testing.T) {
-	transport := &mockCampfireDockTransport{
-		dockJSON: `[{"name": "chat", "id": 900, "title": "Campfire", "enabled": false}]`,
+// TestChatListDisabledChat verifies the not-found error hints that
+// chat is disabled when only disabled chat entries exist.
+func TestChatListDisabledChat(t *testing.T) {
+	transport := &mockChatDockTransport{
+		dockJSON: `[{"name": "chat", "id": 900, "title": "Chat", "enabled": false}]`,
 	}
 	app, _ := newTestAppWithTransport(t, transport)
 
-	cmd := NewCampfireCmd()
-	err := executeCampfireCommand(cmd, app, "list")
+	cmd := NewChatCmd()
+	err := executeChatCommand(cmd, app, "list")
 	require.Error(t, err)
 
 	var e *output.Error
@@ -482,12 +482,12 @@ func TestCampfireListDisabledCampfire(t *testing.T) {
 	assert.Contains(t, e.Hint, "disabled")
 }
 
-// TestCampfirePostViaSubcommandWithCampfireFlag verifies the proper way to post
-// to a specific campfire: `basecamp campfire post <msg> --campfire <id>`.
-func TestCampfirePostViaSubcommandWithCampfireFlag(t *testing.T) {
+// TestChatPostViaSubcommandWithChatFlag verifies the proper way to post
+// to a specific chat: `basecamp chat post <msg> --chat <id>`.
+func TestChatPostViaSubcommandWithChatFlag(t *testing.T) {
 	t.Setenv("BASECAMP_NO_KEYRING", "1")
 
-	transport := &mockCampfireCreateTransport{}
+	transport := &mockChatCreateTransport{}
 	buf := &bytes.Buffer{}
 	cfg := &config.Config{
 		AccountID: "99999",
@@ -495,7 +495,7 @@ func TestCampfirePostViaSubcommandWithCampfireFlag(t *testing.T) {
 	}
 
 	sdkCfg := &basecamp.Config{}
-	sdkClient := basecamp.NewClient(sdkCfg, &campfireTestTokenProvider{},
+	sdkClient := basecamp.NewClient(sdkCfg, &chatTestTokenProvider{},
 		basecamp.WithTransport(transport),
 		basecamp.WithMaxRetries(1),
 	)
@@ -513,9 +513,9 @@ func TestCampfirePostViaSubcommandWithCampfireFlag(t *testing.T) {
 		}),
 	}
 
-	cmd := NewCampfireCmd()
-	err := executeCampfireCommand(cmd, app, "post", "<b>Hello</b>", "--campfire", "789", "--content-type", "text/html")
-	require.NoError(t, err, "post via subcommand with --campfire flag should succeed")
+	cmd := NewChatCmd()
+	err := executeChatCommand(cmd, app, "post", "<b>Hello</b>", "--chat", "789", "--content-type", "text/html")
+	require.NoError(t, err, "post via subcommand with --chat flag should succeed")
 	require.NotEmpty(t, transport.capturedBody, "expected request body to be captured")
 
 	var requestBody map[string]any
@@ -528,16 +528,16 @@ func TestCampfirePostViaSubcommandWithCampfireFlag(t *testing.T) {
 		"content should be passed through subcommand path")
 }
 
-// TestCampfireDeleteReturnsDeletedPayload verifies that delete returns {"deleted": true, "id": "..."}.
-func TestCampfireDeleteReturnsDeletedPayload(t *testing.T) {
+// TestChatDeleteReturnsDeletedPayload verifies that delete returns {"deleted": true, "id": "..."}.
+func TestChatDeleteReturnsDeletedPayload(t *testing.T) {
 	t.Setenv("BASECAMP_NO_KEYRING", "1")
 
-	transport := &mockCampfireDeleteTransport{}
-	app, buf := newCampfireDeleteTestApp(transport)
+	transport := &mockChatDeleteTransport{}
+	app, buf := newChatDeleteTestApp(transport)
 	app.Flags.Agent = true // skip confirmation prompt
 
-	cmd := NewCampfireCmd()
-	err := executeCampfireCommand(cmd, app, "delete", "111", "--force")
+	cmd := NewChatCmd()
+	err := executeChatCommand(cmd, app, "delete", "111", "--force")
 	require.NoError(t, err)
 
 	assert.Equal(t, "DELETE", transport.capturedMethod)
@@ -552,36 +552,36 @@ func TestCampfireDeleteReturnsDeletedPayload(t *testing.T) {
 	assert.Equal(t, "111", data["id"])
 }
 
-// TestCampfireDeleteSkipsPromptInAgentMode verifies that --agent mode skips the
+// TestChatDeleteSkipsPromptInAgentMode verifies that --agent mode skips the
 // confirmation prompt and issues the DELETE call.
-func TestCampfireDeleteSkipsPromptInAgentMode(t *testing.T) {
+func TestChatDeleteSkipsPromptInAgentMode(t *testing.T) {
 	t.Setenv("BASECAMP_NO_KEYRING", "1")
 
-	transport := &mockCampfireDeleteTransport{}
-	app, _ := newCampfireDeleteTestApp(transport)
+	transport := &mockChatDeleteTransport{}
+	app, _ := newChatDeleteTestApp(transport)
 	app.Flags.Agent = true // machine output — no prompt
 
-	cmd := NewCampfireCmd()
-	err := executeCampfireCommand(cmd, app, "delete", "111")
+	cmd := NewChatCmd()
+	err := executeChatCommand(cmd, app, "delete", "111")
 	require.NoError(t, err)
 
 	assert.Equal(t, "DELETE", transport.capturedMethod)
 	assert.Contains(t, transport.capturedPath, "/lines/")
 }
 
-// TestCampfireDeleteForceSkipsPrompt verifies that --force bypasses the confirmation
+// TestChatDeleteForceSkipsPrompt verifies that --force bypasses the confirmation
 // prompt even when not in machine-output mode.
-func TestCampfireDeleteForceSkipsPrompt(t *testing.T) {
+func TestChatDeleteForceSkipsPrompt(t *testing.T) {
 	t.Setenv("BASECAMP_NO_KEYRING", "1")
 
-	transport := &mockCampfireDeleteTransport{}
-	app, _ := newCampfireDeleteTestApp(transport)
+	transport := &mockChatDeleteTransport{}
+	app, _ := newChatDeleteTestApp(transport)
 	// Flags.Agent is false — not in machine mode.
 	// Test stdout is *bytes.Buffer (not *os.File), so isMachineOutput TTY check
 	// falls through to false. Without --force this would attempt tui.ConfirmDangerous.
 
-	cmd := NewCampfireCmd()
-	err := executeCampfireCommand(cmd, app, "delete", "111", "--force")
+	cmd := NewChatCmd()
+	err := executeChatCommand(cmd, app, "delete", "111", "--force")
 	require.NoError(t, err)
 
 	assert.Equal(t, "DELETE", transport.capturedMethod)

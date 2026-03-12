@@ -906,7 +906,7 @@ func (w *Workspace) navigate(target ViewTarget, scope Scope) tea.Cmd {
 	w.session.SetScope(scope)
 
 	// Sync Hub realms to match the target scope. This handles:
-	// - Cross-account navigation (Pings → Campfire on different account):
+	// - Cross-account navigation (Pings → Chat on different account):
 	//   EnsureAccount rotates the account realm + tears down project realm,
 	//   and we resolve + update chrome to reflect the new account name.
 	// - Forward navigation to non-project views (any view → Hey):
@@ -1041,7 +1041,7 @@ func toolNameToViewTarget(name string) (ViewTarget, bool) {
 	case "todoset":
 		return ViewTodos, true
 	case "chat":
-		return ViewCampfire, true
+		return ViewChat, true
 	case "message_board":
 		return ViewMessages, true
 	case "kanban_board":
@@ -1632,11 +1632,11 @@ func defaultSidebarTargets(session *Session) []ViewTarget {
 	return targets
 }
 
-// isBonfireView returns true when the current view is a campfire-related target.
+// isBonfireView returns true when the current view is a chat-related target.
 // Used to prevent ctrl+g from pushing duplicate nav entries.
 func (w *Workspace) isBonfireView() bool {
 	switch w.router.CurrentTarget() {
-	case ViewBonfire, ViewFrontPage, ViewBonfireSidebar, ViewCampfire:
+	case ViewBonfire, ViewFrontPage, ViewBonfireSidebar, ViewChat:
 		return true
 	default:
 		return false

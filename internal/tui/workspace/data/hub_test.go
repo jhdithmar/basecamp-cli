@@ -325,19 +325,19 @@ func TestHubCheckins(t *testing.T) {
 	assert.Same(t, pool, pool2)
 }
 
-func TestHubCampfireLines(t *testing.T) {
+func TestHubChatLines(t *testing.T) {
 	h := NewHub(NewMultiStore(nil), "")
 	h.EnsureAccount("aaa")
 
-	pool := h.CampfireLines(42, 55)
+	pool := h.ChatLines(42, 55)
 	require.NotNil(t, pool)
-	assert.Equal(t, "campfire-lines:42:55", pool.Key())
+	assert.Equal(t, "chat-lines:42:55", pool.Key())
 
-	pool2 := h.CampfireLines(42, 55)
+	pool2 := h.ChatLines(42, 55)
 	assert.Same(t, pool, pool2)
 
 	// Verify polling config was set.
-	assert.NotZero(t, pool.PollInterval(), "campfire pool should have non-zero poll interval")
+	assert.NotZero(t, pool.PollInterval(), "chat pool should have non-zero poll interval")
 }
 
 func TestHubMessages(t *testing.T) {

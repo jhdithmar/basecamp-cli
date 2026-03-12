@@ -32,7 +32,7 @@ const (
 	ViewProjects ViewTarget = iota
 	ViewDock
 	ViewTodos
-	ViewCampfire
+	ViewChat
 	ViewHey
 	ViewCards
 	ViewMessages
@@ -51,8 +51,8 @@ const (
 	ViewHome
 	ViewActivity
 	ViewTimeline       // project-scoped timeline
-	ViewBonfire        // multi-campfire River view
-	ViewFrontPage      // campfire overview (newspaper layout)
+	ViewBonfire        // multi-chat River view
+	ViewFrontPage      // chat overview (newspaper layout)
 	ViewBonfireSidebar // compact live chat/ping sidebar
 )
 
@@ -132,21 +132,21 @@ type TodoCreatedMsg struct {
 	Err        error
 }
 
-// Campfire messages
+// Chat messages
 
-// CampfireLinesLoadedMsg is sent when campfire lines are fetched.
-type CampfireLinesLoadedMsg struct {
-	Lines      []CampfireLineInfo
+// ChatLinesLoadedMsg is sent when chat lines are fetched.
+type ChatLinesLoadedMsg struct {
+	Lines      []ChatLineInfo
 	TotalCount int  // total lines available from X-Total-Count
 	Prepend    bool // true when loading older messages (prepend to existing)
 	Err        error
 }
 
-// CampfireLineInfo is a type alias for data.CampfireLineInfo.
-type CampfireLineInfo = data.CampfireLineInfo
+// ChatLineInfo is a type alias for data.ChatLineInfo.
+type ChatLineInfo = data.ChatLineInfo
 
-// CampfireLineSentMsg is sent after posting a line.
-type CampfireLineSentMsg struct {
+// ChatLineSentMsg is sent after posting a line.
+type ChatLineSentMsg struct {
 	Err error
 }
 

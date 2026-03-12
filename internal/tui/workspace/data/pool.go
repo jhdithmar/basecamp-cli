@@ -38,7 +38,7 @@ type Pooler interface {
 
 // Pool is a typed, self-refreshing data source.
 // Go equivalent of iOS RemoteReadService / Android BaseApiRepository.
-// One Pool per logical data set (projects, hey-activity, campfire-lines).
+// One Pool per logical data set (projects, hey-activity, chat-lines).
 //
 // The Pool does not subscribe or push — it's a typed cache with fetch
 // capabilities. TEA's polling mechanism (PollMsg -> view calls FetchIfStale)

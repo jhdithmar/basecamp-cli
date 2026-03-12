@@ -14,7 +14,7 @@ import (
 
 // Request describes what to summarize and at what zoom level.
 type Request struct {
-	ContentKey  string    // human-readable grouping key, e.g. "campfire:123:gap:45-67"
+	ContentKey  string    // human-readable grouping key, e.g. "chat:123:gap:45-67"
 	Content     []Segment // the messages to summarize
 	TargetChars int       // desired output length
 	Hint        string    // context hint: "gap", "ticker", "scan"

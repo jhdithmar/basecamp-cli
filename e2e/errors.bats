@@ -35,13 +35,13 @@ load test_helper
   assert_output_contains "Unknown option"
 }
 
-@test "campfire --campfire without value shows error" {
+@test "chat --chat without value shows error" {
   create_credentials
   create_global_config '{"account_id": 99999}'
 
-  run basecamp campfire messages --campfire
+  run basecamp chat messages --chat
   assert_failure
-  assert_output_contains "--campfire requires a value"
+  assert_output_contains "--chat requires a value"
 }
 
 @test "comment without recording ID shows error" {
@@ -132,11 +132,11 @@ load test_helper
   assert_json_value '.code' 'usage'
 }
 
-@test "campfire post without message shows error" {
+@test "chat post without message shows error" {
   create_credentials
   create_global_config '{"account_id": 99999, "project_id": 123}'
 
-  run basecamp campfire post
+  run basecamp chat post
   assert_failure
   assert_json_value '.error' '<message> required'
   assert_json_value '.code' 'usage'

@@ -52,12 +52,12 @@ func TestRegistry_SearchByName(t *testing.T) {
 
 func TestRegistry_SearchByAlias(t *testing.T) {
 	r := NewRegistry()
-	r.Register(Action{Name: ":campfire", Aliases: []string{"chat", "fire"}})
+	r.Register(Action{Name: ":chat", Aliases: []string{"campfire", "fire"}})
 	r.Register(Action{Name: ":todos"})
 
-	results := r.Search("chat")
+	results := r.Search("campfire")
 	require.Len(t, results, 1)
-	assert.Equal(t, ":campfire", results[0].Name)
+	assert.Equal(t, ":chat", results[0].Name)
 }
 
 func TestRegistry_SearchByDescription(t *testing.T) {
@@ -162,7 +162,7 @@ func TestDefaultActions_ProjectScopeActions(t *testing.T) {
 		names[a.Name] = true
 	}
 	assert.True(t, names[":todos"])
-	assert.True(t, names[":campfire"])
+	assert.True(t, names[":chat"])
 	assert.True(t, names[":messages"])
 	assert.True(t, names[":cards"])
 	assert.True(t, names[":schedule"])

@@ -119,20 +119,20 @@ func TestHomeShortHelp_ProjectItem(t *testing.T) {
 	assert.Equal(t, "p", hints[1].Help().Key)
 }
 
-func TestHomeShortHelp_CampfireItem(t *testing.T) {
+func TestHomeShortHelp_ChatItem(t *testing.T) {
 	v := testHome(true)
-	v.itemMeta["campfire:1"] = homeItemMeta{
-		viewTarget: workspace.ViewCampfire,
+	v.itemMeta["chat:1"] = homeItemMeta{
+		viewTarget: workspace.ViewChat,
 		projectID:  1,
 	}
 	v.list.SetItems([]widget.ListItem{
-		{ID: "campfire:1", Title: "Campfire Room"},
+		{ID: "chat:1", Title: "Chat Room"},
 	})
 
 	hints := v.ShortHelp()
 	require.NotNil(t, hints)
 	require.Len(t, hints, 2)
-	assert.Equal(t, "open campfire", hints[0].Help().Desc)
+	assert.Equal(t, "open chat", hints[0].Help().Desc)
 }
 
 func TestHomeShortHelp_RecordingWithType(t *testing.T) {

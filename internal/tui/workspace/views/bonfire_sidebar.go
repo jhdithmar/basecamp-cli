@@ -16,7 +16,7 @@ import (
 )
 
 // BonfireSidebar is a compact live chat/ping panel designed for the sidebar.
-// Shows campfire rooms with activity and 1:1 pings, grouped and sorted by
+// Shows chat rooms with activity and 1:1 pings, grouped and sorted by
 // recency. Replaces the single-line ticker with a scannable, interactive list.
 type BonfireSidebar struct {
 	session *workspace.Session
@@ -192,14 +192,14 @@ func (b *BonfireSidebar) openSelected() tea.Cmd {
 		scope.AccountID = v.AccountID
 		scope.ProjectID = v.ProjectID
 		scope.ToolType = "chat"
-		scope.ToolID = v.CampfireID
-		return workspace.Navigate(workspace.ViewCampfire, scope)
+		scope.ToolID = v.ChatID
+		return workspace.Navigate(workspace.ViewChat, scope)
 	case data.PingRoomInfo:
 		scope.AccountID = v.AccountID
 		scope.ProjectID = v.ProjectID
 		scope.ToolType = "chat"
-		scope.ToolID = v.CampfireID
-		return workspace.Navigate(workspace.ViewCampfire, scope)
+		scope.ToolID = v.ChatID
+		return workspace.Navigate(workspace.ViewChat, scope)
 	}
 	return nil
 }
@@ -229,12 +229,12 @@ func (b *BonfireSidebar) View() string {
 	// We'll track line index vs cursor for highlighting
 	itemIdx := 0
 
-	// Campfires section
+	// Chats section
 	if len(b.digests) > 0 {
 		header := lipgloss.NewStyle().
 			Bold(true).
 			Foreground(theme.Foreground).
-			Render("CAMPFIRES")
+			Render("CHATS")
 		lines = append(lines, header)
 
 		for _, e := range b.digests {

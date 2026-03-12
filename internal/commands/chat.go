@@ -17,82 +17,82 @@ import (
 	"github.com/basecamp/basecamp-cli/internal/tui"
 )
 
-// NewCampfireCmd creates the campfire command for real-time chat.
-func NewCampfireCmd() *cobra.Command {
+// NewChatCmd creates the chat command for real-time chat.
+func NewChatCmd() *cobra.Command {
 	var project string
-	var campfireID string
+	var chatID string
 	var contentType string
 
 	cmd := &cobra.Command{
-		Use:     "campfire [action]",
-		Aliases: []string{"chat"},
-		Short:   "Interact with Campfire chat",
-		Long: `Interact with Campfire (real-time chat).
+		Use:     "chat [action]",
+		Aliases: []string{"campfire"},
+		Short:   "Interact with chat",
+		Long: `Interact with chat (real-time messaging).
 
-Use 'basecamp campfire list' to see campfires in a project.
-Use 'basecamp campfire messages' to view recent messages.
-Use 'basecamp campfire post "message"' to post a message.`,
-		Annotations: map[string]string{"agent_notes": "Projects may have multiple campfires; use `campfire list` to see them\nContent supports Markdown — converted to HTML automatically\nCampfire is project-scoped, no cross-project campfire queries"},
+Use 'basecamp chat list' to see chats in a project.
+Use 'basecamp chat messages' to view recent messages.
+Use 'basecamp chat post "message"' to post a message.`,
+		Annotations: map[string]string{"agent_notes": "Projects may have multiple chats; use `chat list` to see them\nContent supports Markdown — converted to HTML automatically\nChat is project-scoped, no cross-project chat queries"},
 	}
 
 	cmd.PersistentFlags().StringVarP(&project, "project", "p", "", "Project ID or name")
 	cmd.PersistentFlags().StringVar(&project, "in", "", "Project ID (alias for --project)")
-	cmd.PersistentFlags().StringVarP(&campfireID, "campfire", "c", "", "Campfire ID")
+	cmd.PersistentFlags().StringVarP(&chatID, "chat", "c", "", "Chat ID")
 	cmd.AddCommand(
-		newCampfireListCmd(&project, &campfireID),
-		newCampfireMessagesCmd(&project, &campfireID),
-		newCampfirePostCmd(&project, &campfireID, &contentType),
-		newCampfireUploadCmd(&project, &campfireID),
-		newCampfireLineShowCmd(&project, &campfireID),
-		newCampfireLineDeleteCmd(&project, &campfireID),
+		newChatListCmd(&project, &chatID),
+		newChatMessagesCmd(&project, &chatID),
+		newChatPostCmd(&project, &chatID, &contentType),
+		newChatUploadCmd(&project, &chatID),
+		newChatLineShowCmd(&project, &chatID),
+		newChatLineDeleteCmd(&project, &chatID),
 	)
 
 	return cmd
 }
 
-func newCampfireListCmd(project, campfireID *string) *cobra.Command {
+func newChatListCmd(project, chatID *string) *cobra.Command {
 	var all bool
 
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List campfires",
-		Long:  "List campfires in a project or account-wide with --all.",
+		Short: "List chats",
+		Long:  "List chats in a project or account-wide with --all.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
 			if err := ensureAccount(cmd, app); err != nil {
 				return err
 			}
-			return runCampfireList(cmd, app, *project, *campfireID, all)
+			return runChatList(cmd, app, *project, *chatID, all)
 		},
 	}
 
-	cmd.Flags().BoolVarP(&all, "all", "A", false, "List all campfires across account")
+	cmd.Flags().BoolVarP(&all, "all", "A", false, "List all chats across account")
 
 	return cmd
 }
 
-func runCampfireList(cmd *cobra.Command, app *appctx.App, project, campfireID string, all bool) error {
-	// Account-wide campfire listing
+func runChatList(cmd *cobra.Command, app *appctx.App, project, chatID string, all bool) error {
+	// Account-wide chat listing
 	if all {
 		result, err := app.Account().Campfires().List(cmd.Context(), nil)
 		if err != nil {
 			return err
 		}
-		campfires := result.Campfires
+		chats := result.Campfires
 
-		summary := fmt.Sprintf("%d campfires", len(campfires))
+		summary := fmt.Sprintf("%d chats", len(chats))
 
-		return app.OK(campfires,
+		return app.OK(chats,
 			output.WithSummary(summary),
 			output.WithBreadcrumbs(
 				output.Breadcrumb{
 					Action:      "messages",
-					Cmd:         "basecamp campfire <id> messages --in <project>",
+					Cmd:         "basecamp chat <id> messages --in <project>",
 					Description: "View messages",
 				},
 				output.Breadcrumb{
 					Action:      "post",
-					Cmd:         "basecamp campfire <id> post \"message\" --in <project>",
+					Cmd:         "basecamp chat <id> post \"message\" --in <project>",
 					Description: "Post message",
 				},
 			),
@@ -119,25 +119,25 @@ func runCampfireList(cmd *cobra.Command, app *appctx.App, project, campfireID st
 		return err
 	}
 
-	// If a specific campfire ID was given via -c, fetch just that one
-	if campfireID != "" {
-		campfireIDInt, parseErr := strconv.ParseInt(campfireID, 10, 64)
+	// If a specific chat ID was given via -c, fetch just that one
+	if chatID != "" {
+		chatIDInt, parseErr := strconv.ParseInt(chatID, 10, 64)
 		if parseErr != nil {
-			return output.ErrUsage("Invalid campfire ID")
+			return output.ErrUsage("Invalid chat ID")
 		}
 
-		campfire, getErr := app.Account().Campfires().Get(cmd.Context(), campfireIDInt)
+		chat, getErr := app.Account().Campfires().Get(cmd.Context(), chatIDInt)
 		if getErr != nil {
 			return getErr
 		}
 
-		return app.OK([]*basecamp.Campfire{campfire},
-			output.WithSummary(fmt.Sprintf("Campfire: %s", campfireTitle(campfire))),
-			output.WithBreadcrumbs(campfireListBreadcrumbs(campfireID, resolvedProjectID)...),
+		return app.OK([]*basecamp.Campfire{chat},
+			output.WithSummary(fmt.Sprintf("Chat: %s", chatTitle(chat))),
+			output.WithBreadcrumbs(chatListBreadcrumbs(chatID, resolvedProjectID)...),
 		)
 	}
 
-	// Fetch project dock and find all chat entries (supports multi-campfire projects)
+	// Fetch project dock and find all chat entries (supports multi-chat projects)
 	path := fmt.Sprintf("/projects/%s.json", resolvedProjectID)
 	resp, err := app.Account().Get(cmd.Context(), path)
 	if err != nil {
@@ -151,8 +151,8 @@ func runCampfireList(cmd *cobra.Command, app *appctx.App, project, campfireID st
 		return fmt.Errorf("failed to parse project: %w", err)
 	}
 
-	// Collect enabled chat dock entries and fetch full campfire details
-	var campfires []*basecamp.Campfire
+	// Collect enabled chat dock entries and fetch full chat details
+	var chats []*basecamp.Campfire
 	var hasDisabled bool
 	for _, tool := range projectData.Dock {
 		if tool.Name != "chat" {
@@ -162,75 +162,75 @@ func runCampfireList(cmd *cobra.Command, app *appctx.App, project, campfireID st
 			hasDisabled = true
 			continue
 		}
-		campfire, getErr := app.Account().Campfires().Get(cmd.Context(), tool.ID)
+		chat, getErr := app.Account().Campfires().Get(cmd.Context(), tool.ID)
 		if getErr != nil {
 			return getErr
 		}
-		campfires = append(campfires, campfire)
+		chats = append(chats, chat)
 	}
 
-	if len(campfires) == 0 {
-		hint := "Project has no campfire"
+	if len(chats) == 0 {
+		hint := "Project has no chat"
 		if hasDisabled {
-			hint = "Campfire is disabled for this project"
+			hint = "Chat is disabled for this project"
 		}
-		return output.ErrNotFoundHint("campfire", resolvedProjectID, hint)
+		return output.ErrNotFoundHint("chat", resolvedProjectID, hint)
 	}
 
-	summary := fmt.Sprintf("%d campfire(s)", len(campfires))
+	summary := fmt.Sprintf("%d chat(s)", len(chats))
 
-	return app.OK(campfires,
+	return app.OK(chats,
 		output.WithSummary(summary),
 		output.WithBreadcrumbs(
 			output.Breadcrumb{
 				Action:      "messages",
-				Cmd:         fmt.Sprintf("basecamp campfire messages -c <id> --in %s", resolvedProjectID),
+				Cmd:         fmt.Sprintf("basecamp chat messages -c <id> --in %s", resolvedProjectID),
 				Description: "View messages",
 			},
 			output.Breadcrumb{
 				Action:      "post",
-				Cmd:         fmt.Sprintf("basecamp campfire post \"message\" -c <id> --in %s", resolvedProjectID),
+				Cmd:         fmt.Sprintf("basecamp chat post \"message\" -c <id> --in %s", resolvedProjectID),
 				Description: "Post message",
 			},
 		),
 	)
 }
 
-func campfireTitle(c *basecamp.Campfire) string {
+func chatTitle(c *basecamp.Campfire) string {
 	if c.Title != "" {
 		return c.Title
 	}
-	return "Campfire"
+	return "Chat"
 }
 
-func campfireListBreadcrumbs(campfireID, projectID string) []output.Breadcrumb {
+func chatListBreadcrumbs(chatID, projectID string) []output.Breadcrumb {
 	return []output.Breadcrumb{
 		{
 			Action:      "messages",
-			Cmd:         fmt.Sprintf("basecamp campfire messages -c %s --in %s", campfireID, projectID),
+			Cmd:         fmt.Sprintf("basecamp chat messages -c %s --in %s", chatID, projectID),
 			Description: "View messages",
 		},
 		{
 			Action:      "post",
-			Cmd:         fmt.Sprintf("basecamp campfire post \"message\" -c %s --in %s", campfireID, projectID),
+			Cmd:         fmt.Sprintf("basecamp chat post \"message\" -c %s --in %s", chatID, projectID),
 			Description: "Post message",
 		},
 	}
 }
 
-func newCampfireMessagesCmd(project, campfireID *string) *cobra.Command {
+func newChatMessagesCmd(project, chatID *string) *cobra.Command {
 	var limit int
 
 	cmd := &cobra.Command{
 		Use:   "messages",
 		Short: "View recent messages",
-		Long:  "View recent messages from a Campfire.",
+		Long:  "View recent messages from a chat.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
 			if err := ensureAccount(cmd, app); err != nil {
 				return err
 			}
-			return runCampfireMessages(cmd, app, *campfireID, *project, limit)
+			return runChatMessages(cmd, app, *chatID, *project, limit)
 		},
 	}
 
@@ -239,7 +239,7 @@ func newCampfireMessagesCmd(project, campfireID *string) *cobra.Command {
 	return cmd
 }
 
-func runCampfireMessages(cmd *cobra.Command, app *appctx.App, campfireID, project string, limit int) error {
+func runChatMessages(cmd *cobra.Command, app *appctx.App, chatID, project string, limit int) error {
 	// Resolve project, with interactive fallback
 	projectID := project
 	if projectID == "" {
@@ -260,21 +260,21 @@ func runCampfireMessages(cmd *cobra.Command, app *appctx.App, campfireID, projec
 		return err
 	}
 
-	// Get campfire ID from project if not specified
-	if campfireID == "" {
-		campfireID, err = getCampfireID(cmd, app, resolvedProjectID)
+	// Get chat ID from project if not specified
+	if chatID == "" {
+		chatID, err = getChatID(cmd, app, resolvedProjectID)
 		if err != nil {
 			return err
 		}
 	}
 
-	campfireIDInt, err := strconv.ParseInt(campfireID, 10, 64)
+	chatIDInt, err := strconv.ParseInt(chatID, 10, 64)
 	if err != nil {
-		return output.ErrUsage("Invalid campfire ID")
+		return output.ErrUsage("Invalid chat ID")
 	}
 
 	// Get recent messages (lines) using SDK
-	result, err := app.Account().Campfires().ListLines(cmd.Context(), campfireIDInt, nil)
+	result, err := app.Account().Campfires().ListLines(cmd.Context(), chatIDInt, nil)
 	if err != nil {
 		return err
 	}
@@ -289,29 +289,29 @@ func runCampfireMessages(cmd *cobra.Command, app *appctx.App, campfireID, projec
 
 	return app.OK(lines,
 		output.WithSummary(summary),
-		output.WithEntity("campfire_line"),
+		output.WithEntity("chat_line"),
 		output.WithBreadcrumbs(
 			output.Breadcrumb{
 				Action:      "post",
-				Cmd:         fmt.Sprintf("basecamp campfire %s post \"message\" --in %s", campfireID, resolvedProjectID),
+				Cmd:         fmt.Sprintf("basecamp chat %s post \"message\" --in %s", chatID, resolvedProjectID),
 				Description: "Post message",
 			},
 			output.Breadcrumb{
 				Action:      "more",
-				Cmd:         fmt.Sprintf("basecamp campfire %s messages --limit 50 --in %s", campfireID, resolvedProjectID),
+				Cmd:         fmt.Sprintf("basecamp chat %s messages --limit 50 --in %s", chatID, resolvedProjectID),
 				Description: "Load more",
 			},
 		),
 	)
 }
 
-func newCampfirePostCmd(project, campfireID, contentType *string) *cobra.Command {
+func newChatPostCmd(project, chatID, contentType *string) *cobra.Command {
 	var content string
 
 	cmd := &cobra.Command{
 		Use:   "post <message>",
 		Short: "Post a message",
-		Long: `Post a message to a Campfire.
+		Long: `Post a message to a chat.
 
 By default, messages are sent as plain text. Use --content-type text/html
 for rich text (HTML) messages.`,
@@ -334,7 +334,7 @@ for rich text (HTML) messages.`,
 				return err
 			}
 
-			return runCampfirePost(cmd, app, *campfireID, *project, messageContent, *contentType)
+			return runChatPost(cmd, app, *chatID, *project, messageContent, *contentType)
 		},
 	}
 
@@ -344,10 +344,10 @@ for rich text (HTML) messages.`,
 	return cmd
 }
 
-func runCampfirePost(cmd *cobra.Command, app *appctx.App, campfireID, project, content, contentType string) error {
-	// Resolve project only when needed (campfire ID not provided, or for breadcrumbs)
+func runChatPost(cmd *cobra.Command, app *appctx.App, chatID, project, content, contentType string) error {
+	// Resolve project only when needed (chat ID not provided, or for breadcrumbs)
 	var resolvedProjectID string
-	if campfireID == "" {
+	if chatID == "" {
 		projectID := project
 		if projectID == "" {
 			projectID = app.Flags.Project
@@ -368,15 +368,15 @@ func runCampfirePost(cmd *cobra.Command, app *appctx.App, campfireID, project, c
 			return err
 		}
 
-		campfireID, err = getCampfireID(cmd, app, resolvedProjectID)
+		chatID, err = getChatID(cmd, app, resolvedProjectID)
 		if err != nil {
 			return err
 		}
 	}
 
-	campfireIDInt, err := strconv.ParseInt(campfireID, 10, 64)
+	chatIDInt, err := strconv.ParseInt(chatID, 10, 64)
 	if err != nil {
-		return output.ErrUsage("Invalid campfire ID")
+		return output.ErrUsage("Invalid chat ID")
 	}
 
 	// Post message using SDK
@@ -384,7 +384,7 @@ func runCampfirePost(cmd *cobra.Command, app *appctx.App, campfireID, project, c
 	if contentType != "" {
 		opts = &basecamp.CreateLineOptions{ContentType: contentType}
 	}
-	line, err := app.Account().Campfires().CreateLine(cmd.Context(), campfireIDInt, content, opts)
+	line, err := app.Account().Campfires().CreateLine(cmd.Context(), chatIDInt, content, opts)
 	if err != nil {
 		return err
 	}
@@ -397,12 +397,12 @@ func runCampfirePost(cmd *cobra.Command, app *appctx.App, campfireID, project, c
 		breadcrumbs = append(breadcrumbs,
 			output.Breadcrumb{
 				Action:      "messages",
-				Cmd:         fmt.Sprintf("basecamp campfire %s messages --in %s", campfireID, resolvedProjectID),
+				Cmd:         fmt.Sprintf("basecamp chat %s messages --in %s", chatID, resolvedProjectID),
 				Description: "View messages",
 			},
 			output.Breadcrumb{
 				Action:      "post",
-				Cmd:         fmt.Sprintf("basecamp campfire %s post \"reply\" --in %s", campfireID, resolvedProjectID),
+				Cmd:         fmt.Sprintf("basecamp chat %s post \"reply\" --in %s", chatID, resolvedProjectID),
 				Description: "Post another",
 			},
 		)
@@ -410,12 +410,12 @@ func runCampfirePost(cmd *cobra.Command, app *appctx.App, campfireID, project, c
 		breadcrumbs = append(breadcrumbs,
 			output.Breadcrumb{
 				Action:      "messages",
-				Cmd:         fmt.Sprintf("basecamp campfire %s messages", campfireID),
+				Cmd:         fmt.Sprintf("basecamp chat %s messages", chatID),
 				Description: "View messages",
 			},
 			output.Breadcrumb{
 				Action:      "post",
-				Cmd:         fmt.Sprintf("basecamp campfire %s post \"reply\"", campfireID),
+				Cmd:         fmt.Sprintf("basecamp chat %s post \"reply\"", chatID),
 				Description: "Post another",
 			},
 		)
@@ -423,41 +423,41 @@ func runCampfirePost(cmd *cobra.Command, app *appctx.App, campfireID, project, c
 
 	return app.OK(line,
 		output.WithSummary(summary),
-		output.WithEntity("campfire_line"),
+		output.WithEntity("chat_line"),
 		output.WithBreadcrumbs(breadcrumbs...),
 	)
 }
 
-func newCampfireUploadCmd(project, campfireID *string) *cobra.Command {
+func newChatUploadCmd(project, chatID *string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "upload <file>",
-		Short: "Upload a file to Campfire",
-		Long: `Upload a file directly to a Campfire chat room.
+		Short: "Upload a file to chat",
+		Long: `Upload a file directly to a chat room.
 
-The file is uploaded as a campfire line (chat message with an attachment).`,
-		Example: `  basecamp campfire upload ./screenshot.png --in my-project`,
+The file is uploaded as a chat line (message with an attachment).`,
+		Example: `  basecamp chat upload ./screenshot.png --in my-project`,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
 			if err := ensureAccount(cmd, app); err != nil {
 				return err
 			}
-			return runCampfireUpload(cmd, app, *campfireID, *project, args[0])
+			return runChatUpload(cmd, app, *chatID, *project, args[0])
 		},
 	}
 	return cmd
 }
 
-func runCampfireUpload(cmd *cobra.Command, app *appctx.App, campfireID, project, filePath string) error {
+func runChatUpload(cmd *cobra.Command, app *appctx.App, chatID, project, filePath string) error {
 	// Normalize drag/paste paths and validate
 	filePath = richtext.NormalizeDragPath(filePath)
 	if err := richtext.ValidateFile(filePath); err != nil {
 		return fmt.Errorf("%s: %w", filePath, err)
 	}
 
-	// Resolve project — required when campfire ID not provided, optional for breadcrumbs
+	// Resolve project — required when chat ID not provided, optional for breadcrumbs
 	var resolvedProjectID string
-	if campfireID == "" {
+	if chatID == "" {
 		projectID := project
 		if projectID == "" {
 			projectID = app.Flags.Project
@@ -478,12 +478,12 @@ func runCampfireUpload(cmd *cobra.Command, app *appctx.App, campfireID, project,
 			return err
 		}
 
-		campfireID, err = getCampfireID(cmd, app, resolvedProjectID)
+		chatID, err = getChatID(cmd, app, resolvedProjectID)
 		if err != nil {
 			return err
 		}
 	} else if project != "" {
-		// Campfire ID provided directly — still resolve project for breadcrumbs
+		// Chat ID provided directly — still resolve project for breadcrumbs
 		var err error
 		resolvedProjectID, _, err = app.Names.ResolveProject(cmd.Context(), project)
 		if err != nil {
@@ -491,9 +491,9 @@ func runCampfireUpload(cmd *cobra.Command, app *appctx.App, campfireID, project,
 		}
 	}
 
-	campfireIDInt, err := strconv.ParseInt(campfireID, 10, 64)
+	chatIDInt, err := strconv.ParseInt(chatID, 10, 64)
 	if err != nil {
-		return output.ErrUsage("Invalid campfire ID")
+		return output.ErrUsage("Invalid chat ID")
 	}
 
 	contentType := richtext.DetectMIME(filePath)
@@ -505,7 +505,7 @@ func runCampfireUpload(cmd *cobra.Command, app *appctx.App, campfireID, project,
 	}
 	defer f.Close()
 
-	line, err := app.Account().Campfires().CreateUpload(cmd.Context(), campfireIDInt, filename, contentType, f)
+	line, err := app.Account().Campfires().CreateUpload(cmd.Context(), chatIDInt, filename, contentType, f)
 	if err != nil {
 		return convertSDKError(err)
 	}
@@ -516,7 +516,7 @@ func runCampfireUpload(cmd *cobra.Command, app *appctx.App, campfireID, project,
 		breadcrumbs = append(breadcrumbs,
 			output.Breadcrumb{
 				Action:      "messages",
-				Cmd:         fmt.Sprintf("basecamp campfire %s messages --in %s", campfireID, resolvedProjectID),
+				Cmd:         fmt.Sprintf("basecamp chat %s messages --in %s", chatID, resolvedProjectID),
 				Description: "View messages",
 			},
 		)
@@ -524,7 +524,7 @@ func runCampfireUpload(cmd *cobra.Command, app *appctx.App, campfireID, project,
 		breadcrumbs = append(breadcrumbs,
 			output.Breadcrumb{
 				Action:      "messages",
-				Cmd:         fmt.Sprintf("basecamp campfire %s messages", campfireID),
+				Cmd:         fmt.Sprintf("basecamp chat %s messages", chatID),
 				Description: "View messages",
 			},
 		)
@@ -536,7 +536,7 @@ func runCampfireUpload(cmd *cobra.Command, app *appctx.App, campfireID, project,
 	)
 }
 
-func newCampfireLineShowCmd(project, campfireID *string) *cobra.Command {
+func newChatLineShowCmd(project, chatID *string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "line <id|url>",
 		Aliases: []string{"show"},
@@ -544,8 +544,8 @@ func newCampfireLineShowCmd(project, campfireID *string) *cobra.Command {
 		Long: `Show details of a specific message line.
 
 You can pass either a line ID or a Basecamp line URL:
-  basecamp campfire line 789 --in my-project
-  basecamp campfire line https://3.basecamp.com/123/buckets/456/chats/789/lines/111`,
+  basecamp chat line 789 --in my-project
+  basecamp chat line https://3.basecamp.com/123/buckets/456/chats/789/lines/111`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
@@ -579,18 +579,18 @@ You can pass either a line ID or a Basecamp line URL:
 				return err
 			}
 
-			// Get campfire ID from project if not specified
-			effectiveCampfireID := *campfireID
-			if effectiveCampfireID == "" {
-				effectiveCampfireID, err = getCampfireID(cmd, app, resolvedProjectID)
+			// Get chat ID from project if not specified
+			effectiveChatID := *chatID
+			if effectiveChatID == "" {
+				effectiveChatID, err = getChatID(cmd, app, resolvedProjectID)
 				if err != nil {
 					return err
 				}
 			}
 
-			campfireIDInt, err := strconv.ParseInt(effectiveCampfireID, 10, 64)
+			chatIDInt, err := strconv.ParseInt(effectiveChatID, 10, 64)
 			if err != nil {
-				return output.ErrUsage("Invalid campfire ID")
+				return output.ErrUsage("Invalid chat ID")
 			}
 			lineIDInt, err := strconv.ParseInt(lineID, 10, 64)
 			if err != nil {
@@ -598,7 +598,7 @@ You can pass either a line ID or a Basecamp line URL:
 			}
 
 			// Get line using SDK
-			line, err := app.Account().Campfires().GetLine(cmd.Context(), campfireIDInt, lineIDInt)
+			line, err := app.Account().Campfires().GetLine(cmd.Context(), chatIDInt, lineIDInt)
 			if err != nil {
 				return err
 			}
@@ -611,16 +611,16 @@ You can pass either a line ID or a Basecamp line URL:
 
 			return app.OK(line,
 				output.WithSummary(summary),
-				output.WithEntity("campfire_line"),
+				output.WithEntity("chat_line"),
 				output.WithBreadcrumbs(
 					output.Breadcrumb{
 						Action:      "delete",
-						Cmd:         fmt.Sprintf("basecamp campfire delete %s --campfire %s --in %s", lineID, effectiveCampfireID, resolvedProjectID),
+						Cmd:         fmt.Sprintf("basecamp chat delete %s --chat %s --in %s", lineID, effectiveChatID, resolvedProjectID),
 						Description: "Delete line",
 					},
 					output.Breadcrumb{
 						Action:      "messages",
-						Cmd:         fmt.Sprintf("basecamp campfire %s messages --in %s", effectiveCampfireID, resolvedProjectID),
+						Cmd:         fmt.Sprintf("basecamp chat %s messages --in %s", effectiveChatID, resolvedProjectID),
 						Description: "Back to messages",
 					},
 				),
@@ -630,19 +630,19 @@ You can pass either a line ID or a Basecamp line URL:
 	return cmd
 }
 
-func newCampfireLineDeleteCmd(project, campfireID *string) *cobra.Command {
+func newChatLineDeleteCmd(project, chatID *string) *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
 		Use:   "delete <id|url>",
 		Short: "Delete a message",
-		Long: `Delete a message line from a Campfire.
+		Long: `Delete a message line from a chat.
 
 This permanently deletes the message — it is not moved to trash.
 
 You can pass either a line ID or a Basecamp line URL:
-  basecamp campfire delete 789 --in my-project
-  basecamp campfire delete https://3.basecamp.com/123/buckets/456/chats/789/lines/111`,
+  basecamp chat delete 789 --in my-project
+  basecamp chat delete https://3.basecamp.com/123/buckets/456/chats/789/lines/111`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
@@ -676,18 +676,18 @@ You can pass either a line ID or a Basecamp line URL:
 				return err
 			}
 
-			// Get campfire ID from project if not specified
-			effectiveCampfireID := *campfireID
-			if effectiveCampfireID == "" {
-				effectiveCampfireID, err = getCampfireID(cmd, app, resolvedProjectID)
+			// Get chat ID from project if not specified
+			effectiveChatID := *chatID
+			if effectiveChatID == "" {
+				effectiveChatID, err = getChatID(cmd, app, resolvedProjectID)
 				if err != nil {
 					return err
 				}
 			}
 
-			campfireIDInt, err := strconv.ParseInt(effectiveCampfireID, 10, 64)
+			chatIDInt, err := strconv.ParseInt(effectiveChatID, 10, 64)
 			if err != nil {
-				return output.ErrUsage("Invalid campfire ID")
+				return output.ErrUsage("Invalid chat ID")
 			}
 			lineIDInt, err := strconv.ParseInt(lineID, 10, 64)
 			if err != nil {
@@ -696,7 +696,7 @@ You can pass either a line ID or a Basecamp line URL:
 
 			// Confirm destructive action in interactive mode
 			if !force && !isMachineOutput(cmd) {
-				confirmed, err := tui.ConfirmDangerous("Permanently delete this campfire line?")
+				confirmed, err := tui.ConfirmDangerous("Permanently delete this chat line?")
 				if err != nil {
 					return nil //nolint:nilerr // user canceled prompt
 				}
@@ -706,7 +706,7 @@ You can pass either a line ID or a Basecamp line URL:
 			}
 
 			// Delete line using SDK
-			err = app.Account().Campfires().DeleteLine(cmd.Context(), campfireIDInt, lineIDInt)
+			err = app.Account().Campfires().DeleteLine(cmd.Context(), chatIDInt, lineIDInt)
 			if err != nil {
 				return err
 			}
@@ -718,7 +718,7 @@ You can pass either a line ID or a Basecamp line URL:
 				output.WithBreadcrumbs(
 					output.Breadcrumb{
 						Action:      "messages",
-						Cmd:         fmt.Sprintf("basecamp campfire %s messages --in %s", effectiveCampfireID, resolvedProjectID),
+						Cmd:         fmt.Sprintf("basecamp chat %s messages --in %s", effectiveChatID, resolvedProjectID),
 						Description: "Back to messages",
 					},
 				),
@@ -731,7 +731,7 @@ You can pass either a line ID or a Basecamp line URL:
 	return cmd
 }
 
-// getCampfireID retrieves the campfire ID from a project's dock, handling multi-dock projects.
-func getCampfireID(cmd *cobra.Command, app *appctx.App, projectID string) (string, error) {
-	return getDockToolID(cmd.Context(), app, projectID, "chat", "", "campfire")
+// getChatID retrieves the chat ID from a project's dock, handling multi-dock projects.
+func getChatID(cmd *cobra.Command, app *appctx.App, projectID string) (string, error) {
+	return getDockToolID(cmd.Context(), app, projectID, "chat", "", "chat")
 }

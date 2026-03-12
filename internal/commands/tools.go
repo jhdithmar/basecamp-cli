@@ -18,13 +18,13 @@ func NewToolsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tools",
 		Short: "Manage project dock tools",
-		Long: `Manage project dock tools (Campfire, Schedule, Docs & Files, etc.).
+		Long: `Manage project dock tools (Chat, Schedule, Docs & Files, etc.).
 
 Every project has a "dock" with tools like Message Board, To-dos, Docs & Files,
-Campfire, Schedule, etc. Tool IDs can be found in the project's dock array
+Chat, Schedule, etc. Tool IDs can be found in the project's dock array
 (see 'basecamp projects show <id>').
 
-Tools can be created by cloning existing ones (e.g., create a second Campfire).
+Tools can be created by cloning existing ones (e.g., create a second Chat).
 Disabling a tool hides it from the dock but preserves its content.`,
 		Annotations: map[string]string{"agent_notes": "Dock tools are the sidebar navigation items in a project\nEnable/disable controls visibility without deleting\nEach tool has a type (e.g., Todoset, Schedule, MessageBoard, Vault, Chat::Campfire)"},
 	}
@@ -126,7 +126,7 @@ func newToolsCreateCmd(project *string) *cobra.Command {
 		Short: "Create a new dock tool by cloning",
 		Long: `Create a new dock tool by cloning an existing one.
 
-For example, clone a Campfire to create a second chat room in the same project.`,
+For example, clone a Chat to create a second chat room in the same project.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if sourceID == "" {
 				return output.ErrUsage("--source or --clone is required (ID of tool to clone)")

@@ -115,21 +115,21 @@ func TestParseBasecampURL_CanonicalizesUpload(t *testing.T) {
 	assert.Equal(t, "Upload", scope.RecordingType, "should canonicalize uploads → Upload")
 }
 
-func TestParseBasecampURL_ChatURL_ViewCampfire(t *testing.T) {
+func TestParseBasecampURL_ChatURL_ViewChat(t *testing.T) {
 	target, scope, err := parseBasecampURL("https://3.basecamp.com/99/buckets/42/chats/7")
 	require.NoError(t, err)
-	assert.Equal(t, workspace.ViewCampfire, target, "/chats/{id} should route to ViewCampfire")
+	assert.Equal(t, workspace.ViewChat, target, "/chats/{id} should route to ViewChat")
 	assert.Equal(t, "chat", scope.ToolType)
 	assert.Equal(t, int64(7), scope.ToolID)
 	assert.Equal(t, "99", scope.AccountID)
 	assert.Equal(t, int64(42), scope.ProjectID)
 }
 
-func TestParseBasecampURL_ChatLineURL_ViewCampfire(t *testing.T) {
+func TestParseBasecampURL_ChatLineURL_ViewChat(t *testing.T) {
 	// Nested /chats/{chatID}/lines/{lineID} should resolve to the parent chat
 	target, scope, err := parseBasecampURL("https://3.basecamp.com/99/buckets/42/chats/7/lines/123")
 	require.NoError(t, err)
-	assert.Equal(t, workspace.ViewCampfire, target, "/chats/{id}/lines/{id} should route to ViewCampfire")
+	assert.Equal(t, workspace.ViewChat, target, "/chats/{id}/lines/{id} should route to ViewChat")
 	assert.Equal(t, "chat", scope.ToolType)
 	assert.Equal(t, int64(7), scope.ToolID, "ToolID should be the chat ID, not the line ID")
 }
@@ -143,6 +143,6 @@ func TestParseBasecampURL_ChatURL_LocalBC3(t *testing.T) {
 		assert.Contains(t, err.Error(), "not a valid Basecamp URL")
 		return
 	}
-	assert.Equal(t, workspace.ViewCampfire, target)
+	assert.Equal(t, workspace.ViewChat, target)
 	assert.Equal(t, int64(7), scope.ToolID)
 }

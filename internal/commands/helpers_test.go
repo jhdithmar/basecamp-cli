@@ -265,7 +265,7 @@ func TestGetDockToolID_DisabledToolShowsDisabledError(t *testing.T) {
 	}
 	app := newDockTestApp(t, transport)
 
-	_, err := getDockToolID(context.Background(), app, "1", "chat", "", "campfire")
+	_, err := getDockToolID(context.Background(), app, "1", "chat", "", "chat")
 	require.Error(t, err)
 
 	var e *output.Error
@@ -280,11 +280,11 @@ func TestGetDockToolID_AbsentToolShowsNotFoundError(t *testing.T) {
 	}
 	app := newDockTestApp(t, transport)
 
-	_, err := getDockToolID(context.Background(), app, "1", "chat", "", "campfire")
+	_, err := getDockToolID(context.Background(), app, "1", "chat", "", "chat")
 	require.Error(t, err)
 
 	var e *output.Error
 	require.True(t, errors.As(err, &e), "expected *output.Error, got %T: %v", err, err)
 	assert.Equal(t, output.CodeNotFound, e.Code)
-	assert.Contains(t, e.Hint, "has no campfire")
+	assert.Contains(t, e.Hint, "has no chat")
 }

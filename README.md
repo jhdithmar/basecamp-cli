@@ -72,7 +72,7 @@ basecamp done 67890                   # Complete todo
 basecamp search "authentication"      # Search across projects
 basecamp files list --in 12345        # List docs & files
 basecamp cards list --in 12345        # List cards (Kanban)
-basecamp campfire post "Hello" --in 12345  # Post to chat
+basecamp chat post "Hello" --in 12345      # Post to chat
 ```
 
 ### Output Formats

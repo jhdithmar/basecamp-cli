@@ -77,12 +77,12 @@ load test_helper
   assert_json_value ".data.type_singular" "document"
 }
 
-@test "basecamp url parse parses campfire URL" {
+@test "basecamp url parse parses chat URL" {
   run basecamp url parse "https://3.basecamp.com/123/buckets/456/chats/789" --json
   assert_success
   is_valid_json
   assert_json_value ".data.type" "chats"
-  assert_json_value ".data.type_singular" "campfire"
+  assert_json_value ".data.type_singular" "chat"
 }
 
 @test "basecamp url parse parses card URL with nested path" {

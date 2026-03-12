@@ -19,20 +19,20 @@ import (
 	"github.com/basecamp/basecamp-cli/internal/tui/workspace/widget"
 )
 
-func testCampfirePool() *data.Pool[data.CampfireLinesResult] {
-	return data.NewPool[data.CampfireLinesResult](
-		"campfire:test",
+func testChatPool() *data.Pool[data.ChatLinesResult] {
+	return data.NewPool[data.ChatLinesResult](
+		"chat:test",
 		data.PoolConfig{},
-		func(context.Context) (data.CampfireLinesResult, error) {
-			return data.CampfireLinesResult{}, nil
+		func(context.Context) (data.ChatLinesResult, error) {
+			return data.ChatLinesResult{}, nil
 		},
 	)
 }
 
-func TestCampfire_PoolUpdatedSetsBoostTargetToLatestLine(t *testing.T) {
-	pool := testCampfirePool()
-	pool.Set(data.CampfireLinesResult{
-		Lines: []data.CampfireLineInfo{
+func TestChat_PoolUpdatedSetsBoostTargetToLatestLine(t *testing.T) {
+	pool := testChatPool()
+	pool.Set(data.ChatLinesResult{
+		Lines: []data.ChatLineInfo{
 			{ID: 100, Body: "one", Creator: "Alice", CreatedAt: "9:00am"},
 			{ID: 200, Body: "two", Creator: "Bob", CreatedAt: "9:01am"},
 			{ID: 300, Body: "three", Creator: "Carol", CreatedAt: "9:02am"},
@@ -40,7 +40,7 @@ func TestCampfire_PoolUpdatedSetsBoostTargetToLatestLine(t *testing.T) {
 		TotalCount: 3,
 	})
 
-	v := &Campfire{
+	v := &Chat{
 		pool:           pool,
 		styles:         tui.NewStyles(),
 		viewport:       viewport.New(viewport.WithWidth(80), viewport.WithHeight(20)),
@@ -54,15 +54,15 @@ func TestCampfire_PoolUpdatedSetsBoostTargetToLatestLine(t *testing.T) {
 	assert.Equal(t, int64(300), v.selectedLineID, "pool updates should retarget boost to the newest line")
 }
 
-func TestCampfire_ScrollModeBoostHotkeyOpensPickerForSelectedLine(t *testing.T) {
+func TestChat_ScrollModeBoostHotkeyOpensPickerForSelectedLine(t *testing.T) {
 	session := workspace.NewTestSession()
 	session.SetScope(workspace.Scope{ProjectID: 42})
 
-	v := &Campfire{
+	v := &Chat{
 		session:        session,
-		keys:           defaultCampfireKeyMap(),
-		mode:           campfireModeScroll,
-		lines:          []workspace.CampfireLineInfo{{ID: 10}, {ID: 20}},
+		keys:           defaultChatKeyMap(),
+		mode:           chatModeScroll,
+		lines:          []workspace.ChatLineInfo{{ID: 10}, {ID: 20}},
 		selectedLineID: 20,
 	}
 
@@ -75,7 +75,7 @@ func TestCampfire_ScrollModeBoostHotkeyOpensPickerForSelectedLine(t *testing.T) 
 		require.True(t, ok, "expected OpenBoostPickerMsg for %q", string(r))
 		assert.Equal(t, int64(42), open.Target.ProjectID)
 		assert.Equal(t, int64(20), open.Target.RecordingID)
-		assert.Equal(t, "Campfire line", open.Target.Title)
+		assert.Equal(t, "Chat line", open.Target.Title)
 	}
 }
 
@@ -139,9 +139,9 @@ func TestWrapLine_HyperlinkTruncation(t *testing.T) {
 		"OSC 8 reset sequence must be present")
 }
 
-func testCampfireWithLines(lines []workspace.CampfireLineInfo) *Campfire {
-	pool := testCampfirePool()
-	return &Campfire{
+func testChatWithLines(lines []workspace.ChatLineInfo) *Chat {
+	pool := testChatPool()
+	return &Chat{
 		pool:     pool,
 		styles:   tui.NewStyles(),
 		viewport: viewport.New(viewport.WithWidth(80), viewport.WithHeight(20)),
@@ -151,9 +151,9 @@ func testCampfireWithLines(lines []workspace.CampfireLineInfo) *Campfire {
 	}
 }
 
-func TestCampfire_MessageGrouping(t *testing.T) {
+func TestChat_MessageGrouping(t *testing.T) {
 	now := time.Date(2026, 1, 15, 12, 0, 0, 0, time.UTC)
-	v := testCampfireWithLines([]workspace.CampfireLineInfo{
+	v := testChatWithLines([]workspace.ChatLineInfo{
 		{ID: 1, Body: "hello", Creator: "Alice", CreatedAt: "9:00am", CreatedAtTS: now},
 		{ID: 2, Body: "world", Creator: "Alice", CreatedAt: "9:00am", CreatedAtTS: now.Add(30 * time.Second)},
 		{ID: 3, Body: "again", Creator: "Alice", CreatedAt: "9:01am", CreatedAtTS: now.Add(60 * time.Second)},
@@ -167,9 +167,9 @@ func TestCampfire_MessageGrouping(t *testing.T) {
 		"consecutive messages from same sender within 5 min should show one header")
 }
 
-func TestCampfire_DifferentSender_BreaksGroup(t *testing.T) {
+func TestChat_DifferentSender_BreaksGroup(t *testing.T) {
 	now := time.Date(2026, 1, 15, 12, 0, 0, 0, time.UTC)
-	v := testCampfireWithLines([]workspace.CampfireLineInfo{
+	v := testChatWithLines([]workspace.ChatLineInfo{
 		{ID: 1, Body: "hi", Creator: "Alice", CreatedAt: "9:00am", CreatedAtTS: now},
 		{ID: 2, Body: "hey", Creator: "Bob", CreatedAt: "9:01am", CreatedAtTS: now.Add(time.Minute)},
 	})
@@ -181,12 +181,12 @@ func TestCampfire_DifferentSender_BreaksGroup(t *testing.T) {
 	assert.Contains(t, content, "Bob")
 }
 
-func TestCampfire_DateSeparator(t *testing.T) {
+func TestChat_DateSeparator(t *testing.T) {
 	// Use dates far enough in the past that neither is "Today" or "Yesterday"
 	day1 := time.Date(2025, 6, 10, 14, 0, 0, 0, time.UTC)
 	day2 := time.Date(2025, 6, 11, 9, 0, 0, 0, time.UTC)
 
-	v := testCampfireWithLines([]workspace.CampfireLineInfo{
+	v := testChatWithLines([]workspace.ChatLineInfo{
 		{ID: 1, Body: "old msg", Creator: "Alice", CreatedAt: "2:00pm", CreatedAtTS: day1},
 		{ID: 2, Body: "new msg", Creator: "Alice", CreatedAt: "9:00am", CreatedAtTS: day2},
 	})
@@ -199,12 +199,12 @@ func TestCampfire_DateSeparator(t *testing.T) {
 	assert.Contains(t, content, "Jun 11", "should show date for second day")
 }
 
-func TestCampfire_MidnightBoundary_ForcesHeader(t *testing.T) {
+func TestChat_MidnightBoundary_ForcesHeader(t *testing.T) {
 	// Same sender, within 5 minutes, but crossing local midnight — header should still appear
 	beforeMidnight := time.Date(2025, 6, 10, 23, 58, 0, 0, time.Local)
 	afterMidnight := time.Date(2025, 6, 11, 0, 1, 0, 0, time.Local)
 
-	v := testCampfireWithLines([]workspace.CampfireLineInfo{
+	v := testChatWithLines([]workspace.ChatLineInfo{
 		{ID: 1, Body: "late night", Creator: "Alice", CreatedAt: "11:58pm", CreatedAtTS: beforeMidnight},
 		{ID: 2, Body: "early morning", Creator: "Alice", CreatedAt: "12:01am", CreatedAtTS: afterMidnight},
 	})
@@ -219,7 +219,7 @@ func TestCampfire_MidnightBoundary_ForcesHeader(t *testing.T) {
 	assert.Contains(t, content, "Jun 11")
 }
 
-func TestCampfire_UTCTimestamps_LocalDaySeparators(t *testing.T) {
+func TestChat_UTCTimestamps_LocalDaySeparators(t *testing.T) {
 	// API timestamps arrive in UTC. Day separators should follow local-day
 	// boundaries, not UTC boundaries. Use two UTC timestamps that fall on
 	// different UTC days but the same local day when local is UTC+5 or similar.
@@ -232,7 +232,7 @@ func TestCampfire_UTCTimestamps_LocalDaySeparators(t *testing.T) {
 	utcNoon := localNoon.UTC()
 	utcNoonPlus1 := utcNoon.Add(time.Hour)
 
-	v := testCampfireWithLines([]workspace.CampfireLineInfo{
+	v := testChatWithLines([]workspace.ChatLineInfo{
 		{ID: 1, Body: "first", Creator: "Alice", CreatedAt: "12:00pm", CreatedAtTS: utcNoon},
 		{ID: 2, Body: "second", Creator: "Bob", CreatedAt: "1:00pm", CreatedAtTS: utcNoonPlus1},
 	})
@@ -245,49 +245,49 @@ func TestCampfire_UTCTimestamps_LocalDaySeparators(t *testing.T) {
 	assert.Equal(t, 2, dateSepCount, "same local day should produce one date separator (2 dashes)")
 }
 
-func testCampfire() *Campfire {
+func testChat() *Chat {
 	styles := tui.NewStyles()
 	comp := widget.NewComposer(styles, widget.WithMode(widget.ComposerQuick))
-	pool := testCampfirePool()
-	return &Campfire{
+	pool := testChatPool()
+	return &Chat{
 		pool:     pool,
 		styles:   styles,
-		keys:     defaultCampfireKeyMap(),
+		keys:     defaultChatKeyMap(),
 		composer: comp,
-		mode:     campfireModeInput,
+		mode:     chatModeInput,
 	}
 }
 
-func TestCampfire_FocusMsg_RefocusesComposer(t *testing.T) {
-	v := testCampfire()
-	v.mode = campfireModeInput
+func TestChat_FocusMsg_RefocusesComposer(t *testing.T) {
+	v := testChat()
+	v.mode = chatModeInput
 	v.composer.Blur()
 
 	_, cmd := v.Update(workspace.FocusMsg{})
 	assert.NotNil(t, cmd, "FocusMsg should return composer focus cmd in input mode")
 }
 
-func TestCampfire_FocusMsg_ScrollModeDoesNotFocusComposer(t *testing.T) {
-	v := testCampfire()
-	v.mode = campfireModeScroll
+func TestChat_FocusMsg_ScrollModeDoesNotFocusComposer(t *testing.T) {
+	v := testChat()
+	v.mode = chatModeScroll
 	v.composer.Blur()
 
 	_, cmd := v.Update(workspace.FocusMsg{})
 	assert.Nil(t, cmd, "FocusMsg should not return composer focus cmd in scroll mode")
 }
 
-func TestCampfire_ShortHelp_ModeAware(t *testing.T) {
-	v := testCampfire()
+func TestChat_ShortHelp_ModeAware(t *testing.T) {
+	v := testChat()
 
 	// Input mode: should show scroll escape, not compose
-	v.mode = campfireModeInput
+	v.mode = chatModeInput
 	hints := v.ShortHelp()
 	keys := helpKeys(hints)
 	assert.Contains(t, keys, "esc", "input mode should show esc/scroll")
 	assert.NotContains(t, keys, "i", "input mode should not show i/compose")
 
 	// Scroll mode: should show compose, not scroll escape
-	v.mode = campfireModeScroll
+	v.mode = chatModeScroll
 	hints = v.ShortHelp()
 	keys = helpKeys(hints)
 	assert.Contains(t, keys, "i", "scroll mode should show i/compose")
@@ -302,33 +302,33 @@ func helpKeys(bindings []key.Binding) []string {
 	return keys
 }
 
-func testPollingCampfire() *Campfire {
+func testPollingChat() *Chat {
 	styles := tui.NewStyles()
-	pool := data.NewPool[data.CampfireLinesResult](
-		"campfire:test",
+	pool := data.NewPool[data.ChatLinesResult](
+		"chat:test",
 		data.PoolConfig{FreshTTL: time.Hour, PollBase: 5 * time.Second},
-		func(context.Context) (data.CampfireLinesResult, error) {
-			return data.CampfireLinesResult{}, nil
+		func(context.Context) (data.ChatLinesResult, error) {
+			return data.ChatLinesResult{}, nil
 		},
 	)
-	pool.Set(data.CampfireLinesResult{})
+	pool.Set(data.ChatLinesResult{})
 
 	session := workspace.NewTestSessionWithHub()
 	session.Hub().EnsureAccount("test-account")
 	session.Hub().EnsureProject(99)
 
-	return &Campfire{
+	return &Chat{
 		session:  session,
 		pool:     pool,
 		styles:   styles,
-		keys:     defaultCampfireKeyMap(),
+		keys:     defaultChatKeyMap(),
 		composer: widget.NewComposer(styles, widget.WithMode(widget.ComposerQuick)),
-		mode:     campfireModeInput,
+		mode:     chatModeInput,
 	}
 }
 
-func TestCampfire_StalePollGen_Dropped(t *testing.T) {
-	v := testPollingCampfire()
+func TestChat_StalePollGen_Dropped(t *testing.T) {
+	v := testPollingChat()
 	poolKey := v.pool.Key()
 
 	cmd := v.schedulePoll()

@@ -3,7 +3,7 @@ package data
 import "sync"
 
 // KeyedPool manages sub-collection pools keyed by a parent ID.
-// For data keyed by a parent: todos by todolist, campfire lines by campfire,
+// For data keyed by a parent: todos by todolist, chat lines by chat,
 // comments by recording.
 type KeyedPool[K comparable, T any] struct {
 	mu              sync.RWMutex

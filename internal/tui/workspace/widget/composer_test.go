@@ -669,9 +669,9 @@ func TestSubmitInterceptRejectsInvalidFiles(t *testing.T) {
 	}
 }
 
-func TestCampfireFlowAutoDetectThenSubmit(t *testing.T) {
-	// End-to-end test mimicking the campfire drag-and-submit flow:
-	// 1. Quick mode composer with upload function (like campfire)
+func TestChatFlowAutoDetectThenSubmit(t *testing.T) {
+	// End-to-end test mimicking the chat drag-and-submit flow:
+	// 1. Quick mode composer with upload function (like chat)
 	// 2. Type a quoted path character by character (Terminal.app drag)
 	// 3. Auto-detect fires, AddAttachment starts async upload
 	// 4. Execute async upload → attachUploadedMsg routes back

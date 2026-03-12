@@ -30,7 +30,7 @@ Out-of-scope sections are excluded from parity totals and scripts: chatbots (dif
 | messages | 10 | `messages`, `message` | ✅ | - | list, show, create, update, pin, unpin. Create supports `--subscribe`/`--no-subscribe` |
 | message_boards | 3 | `messageboards` | ✅ | - | Container, accessed via project dock |
 | message_types | 5 | `messagetypes` | ✅ | - | list, show, create, update, delete |
-| campfires | 14 | `campfire` | ✅ | - | list, messages, post, line show/delete |
+| campfires | 14 | `chat` | ✅ | - | list, messages, post, line show/delete |
 | comments | 8 | `comment`, `comments` | ✅ | - | list, show, create, update |
 | boosts | 6 | `boost`, `react` | ✅ | - | list (recording + event), show, create (recording + event), delete |
 | **Cards (Kanban)** |

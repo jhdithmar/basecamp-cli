@@ -129,24 +129,24 @@ func TestExtractSummary_Zoom1000(t *testing.T) {
 }
 
 func TestCacheKey_Deterministic(t *testing.T) {
-	k1 := CacheKey("campfire:1", Zoom200, "abc123")
-	k2 := CacheKey("campfire:1", Zoom200, "abc123")
+	k1 := CacheKey("chat:1", Zoom200, "abc123")
+	k2 := CacheKey("chat:1", Zoom200, "abc123")
 	if k1 != k2 {
 		t.Errorf("same inputs produced different keys: %s vs %s", k1, k2)
 	}
 }
 
 func TestCacheKey_DifferentContent(t *testing.T) {
-	k1 := CacheKey("campfire:1", Zoom200, "abc123")
-	k2 := CacheKey("campfire:1", Zoom200, "def456")
+	k1 := CacheKey("chat:1", Zoom200, "abc123")
+	k2 := CacheKey("chat:1", Zoom200, "def456")
 	if k1 == k2 {
 		t.Error("different content hashes produced same key")
 	}
 }
 
 func TestCacheKey_DifferentZoom(t *testing.T) {
-	k1 := CacheKey("campfire:1", Zoom40, "abc123")
-	k2 := CacheKey("campfire:1", Zoom200, "abc123")
+	k1 := CacheKey("chat:1", Zoom40, "abc123")
+	k2 := CacheKey("chat:1", Zoom200, "abc123")
 	if k1 == k2 {
 		t.Error("different zoom levels produced same key")
 	}

@@ -85,7 +85,7 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
-			name:  "campfire line URL",
+			name:  "chat line URL",
 			input: "https://3.basecamp.com/123/buckets/456/chats/789/lines/111",
 			want: &Parsed{
 				AccountID:   "123",

@@ -71,8 +71,8 @@ type ForwardInfo struct {
 	From    string
 }
 
-// CampfireLineInfo is a lightweight representation of a campfire line.
-type CampfireLineInfo struct {
+// ChatLineInfo is a lightweight representation of a chat line.
+type ChatLineInfo struct {
 	ID          int64
 	Body        string // HTML content
 	Creator     string
@@ -81,11 +81,11 @@ type CampfireLineInfo struct {
 	BoostEmbed
 }
 
-// CampfireLinesResult holds the lines plus pagination metadata from a
-// campfire fetch. This compound type is the Pool's data value so that
+// ChatLinesResult holds the lines plus pagination metadata from a
+// chat fetch. This compound type is the Pool's data value so that
 // views can access TotalCount for pagination without a side-channel.
-type CampfireLinesResult struct {
-	Lines      []CampfireLineInfo
+type ChatLinesResult struct {
+	Lines      []ChatLineInfo
 	TotalCount int
 }
 
@@ -220,9 +220,9 @@ type ProjectInfo struct {
 	Dock        []DockToolInfo
 }
 
-// PingRoomInfo represents a 1:1 campfire thread.
+// PingRoomInfo represents a 1:1 chat thread.
 type PingRoomInfo struct {
-	CampfireID  int64
+	ChatID      int64
 	ProjectID   int64
 	PersonName  string
 	Account     string
@@ -250,16 +250,16 @@ type TimelineEventInfo struct {
 	AccountID      string
 }
 
-// RoomID uniquely identifies a campfire room across accounts and projects.
+// RoomID uniquely identifies a chat room across accounts and projects.
 type RoomID struct {
-	AccountID  string
-	ProjectID  int64
-	CampfireID int64
+	AccountID string
+	ProjectID int64
+	ChatID    int64
 }
 
 // Key returns a stable string key for maps and cache filenames.
 func (r RoomID) Key() string {
-	return fmt.Sprintf("%s:%d:%d", r.AccountID, r.ProjectID, r.CampfireID)
+	return fmt.Sprintf("%s:%d:%d", r.AccountID, r.ProjectID, r.ChatID)
 }
 
 // Color returns a deterministic color index from the room key.
@@ -273,14 +273,14 @@ func (r RoomID) Color(paletteSize int) int {
 	return int(h.Sum32() % uint32(paletteSize)) //nolint:gosec // paletteSize > 0 guarded above
 }
 
-// BonfireRoomConfig describes a discovered campfire room for bonfire.
+// BonfireRoomConfig describes a discovered chat room for bonfire.
 type BonfireRoomConfig struct {
 	RoomID
-	RoomName    string // campfire title (from the API's Title field)
+	RoomName    string // chat title (from the API's Title field)
 	ProjectName string
 }
 
-// BonfireDigestEntry is the last message from a single campfire room.
+// BonfireDigestEntry is the last message from a single chat room.
 // Used by the Ticker for ambient display.
 type BonfireDigestEntry struct {
 	RoomID
@@ -292,9 +292,9 @@ type BonfireDigestEntry struct {
 	NewCount    int // messages since last read
 }
 
-// RiverLine is a campfire line annotated with room context for the River view.
+// RiverLine is a chat line annotated with room context for the River view.
 type RiverLine struct {
-	CampfireLineInfo
+	ChatLineInfo
 	Room     RoomID
 	RoomName string
 }

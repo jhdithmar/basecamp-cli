@@ -26,16 +26,16 @@ import (
 	"github.com/basecamp/basecamp-cli/internal/tui/workspace/widget"
 )
 
-// campfireMode tracks whether the user is typing or scrolling.
-type campfireMode int
+// chatMode tracks whether the user is typing or scrolling.
+type chatMode int
 
 const (
-	campfireModeInput campfireMode = iota
-	campfireModeScroll
+	chatModeInput chatMode = iota
+	chatModeScroll
 )
 
-// campfireKeyMap defines campfire-specific keybindings.
-type campfireKeyMap struct {
+// chatKeyMap defines chat-specific keybindings.
+type chatKeyMap struct {
 	EnterInput   key.Binding
 	ScrollMode   key.Binding
 	ScrollUp     key.Binding
@@ -44,8 +44,8 @@ type campfireKeyMap struct {
 	ScrollBottom key.Binding
 }
 
-func defaultCampfireKeyMap() campfireKeyMap {
-	return campfireKeyMap{
+func defaultChatKeyMap() chatKeyMap {
+	return chatKeyMap{
 		EnterInput: key.NewBinding(
 			key.WithKeys("i"),
 			key.WithHelp("i", "input"),
@@ -76,26 +76,26 @@ type pendingLine struct {
 	sentAt  time.Time
 }
 
-// Campfire is the chat stream view for a project campfire.
-type Campfire struct {
+// Chat is the chat stream view for a project chat.
+type Chat struct {
 	session *workspace.Session
-	pool    *data.Pool[data.CampfireLinesResult]
+	pool    *data.Pool[data.ChatLinesResult]
 	styles  *tui.Styles
-	keys    campfireKeyMap
+	keys    chatKeyMap
 
 	// IDs
-	projectID  int64
-	campfireID int64
+	projectID int64
+	chatID    int64
 
 	// Layout
 	width, height     int
 	lastRenderedWidth int // track width for re-render on resize
 	viewport          viewport.Model
 	composer          *widget.Composer
-	mode              campfireMode
+	mode              chatMode
 
 	// Data
-	lines          []workspace.CampfireLineInfo
+	lines          []workspace.ChatLineInfo
 	pending        []pendingLine
 	lastID         int64 // highest line ID seen, for detecting new lines
 	selectedLineID int64 // the line currently selected for boost/action
@@ -113,8 +113,8 @@ type Campfire struct {
 	pollGen uint64
 }
 
-// NewCampfire creates the campfire chat view.
-func NewCampfire(session *workspace.Session) *Campfire {
+// NewChat creates the chat view.
+func NewChat(session *workspace.Session) *Chat {
 	styles := session.Styles()
 	scope := session.Scope()
 
@@ -125,7 +125,7 @@ func NewCampfire(session *workspace.Session) *Campfire {
 	vp := viewport.New()
 	vp.MouseWheelEnabled = true
 
-	pool := session.Hub().CampfireLines(scope.ProjectID, scope.ToolID)
+	pool := session.Hub().ChatLines(scope.ProjectID, scope.ToolID)
 
 	comp := widget.NewComposer(styles,
 		widget.WithMode(widget.ComposerQuick),
@@ -134,16 +134,16 @@ func NewCampfire(session *workspace.Session) *Campfire {
 		widget.WithPlaceholder("Type a message..."),
 	)
 
-	return &Campfire{
+	return &Chat{
 		session:     session,
 		pool:        pool,
 		styles:      styles,
-		keys:        defaultCampfireKeyMap(),
+		keys:        defaultChatKeyMap(),
 		projectID:   scope.ProjectID,
-		campfireID:  scope.ToolID,
+		chatID:      scope.ToolID,
 		viewport:    vp,
 		composer:    comp,
-		mode:        campfireModeInput,
+		mode:        chatModeInput,
 		spinner:     s,
 		loading:     true,
 		currentPage: 1,
@@ -151,18 +151,18 @@ func NewCampfire(session *workspace.Session) *Campfire {
 }
 
 // Title implements View.
-func (v *Campfire) Title() string {
-	return "Campfire"
+func (v *Chat) Title() string {
+	return "Chat"
 }
 
 // InputActive implements workspace.InputCapturer.
-func (v *Campfire) InputActive() bool {
-	return v.mode == campfireModeInput
+func (v *Chat) InputActive() bool {
+	return v.mode == chatModeInput
 }
 
 // ShortHelp implements View.
-func (v *Campfire) ShortHelp() []key.Binding {
-	if v.mode == campfireModeScroll {
+func (v *Chat) ShortHelp() []key.Binding {
+	if v.mode == chatModeScroll {
 		return []key.Binding{
 			v.keys.EnterInput,
 			key.NewBinding(key.WithKeys("j", "k"), key.WithHelp("j/k", "scroll")),
@@ -178,7 +178,7 @@ func (v *Campfire) ShortHelp() []key.Binding {
 }
 
 // FullHelp implements View.
-func (v *Campfire) FullHelp() [][]key.Binding {
+func (v *Chat) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{
 			key.NewBinding(key.WithKeys("j", "k"), key.WithHelp("j/k", "scroll")),
@@ -191,7 +191,7 @@ func (v *Campfire) FullHelp() [][]key.Binding {
 }
 
 // SetSize implements View.
-func (v *Campfire) SetSize(w, h int) {
+func (v *Chat) SetSize(w, h int) {
 	widthChanged := w != v.width
 	v.width = w
 	v.height = h
@@ -202,13 +202,13 @@ func (v *Campfire) SetSize(w, h int) {
 }
 
 // Init implements tea.Model.
-func (v *Campfire) Init() tea.Cmd {
-	// Record campfire visit in recents
+func (v *Chat) Init() tea.Cmd {
+	// Record chat visit in recents
 	if r := v.session.Recents(); r != nil {
 		r.Add(recents.Item{
-			ID:          fmt.Sprintf("%d", v.campfireID),
-			Title:       "Campfire",
-			Description: "Campfire",
+			ID:          fmt.Sprintf("%d", v.chatID),
+			Title:       "Chat",
+			Description: "Chat",
 			Type:        recents.TypeRecording,
 			AccountID:   v.session.Scope().AccountID,
 			ProjectID:   fmt.Sprintf("%d", v.projectID),
@@ -238,7 +238,7 @@ func (v *Campfire) Init() tea.Cmd {
 }
 
 // Update implements tea.Model.
-func (v *Campfire) Update(msg tea.Msg) (workspace.View, tea.Cmd) {
+func (v *Chat) Update(msg tea.Msg) (workspace.View, tea.Cmd) {
 	switch msg := msg.(type) {
 	case data.PoolUpdatedMsg:
 		if msg.Key == v.pool.Key() {
@@ -271,19 +271,19 @@ func (v *Campfire) Update(msg tea.Msg) (workspace.View, tea.Cmd) {
 			}
 			if snap.State == data.StateError {
 				v.loading = false
-				return v, workspace.ReportError(snap.Err, "loading campfire")
+				return v, workspace.ReportError(snap.Err, "loading chat")
 			}
 		}
 		return v, nil
 
-	case workspace.CampfireLinesLoadedMsg:
+	case workspace.ChatLinesLoadedMsg:
 		// Only prepend case remains (from fetchOlderLines)
 		if msg.Prepend {
 			return v, v.handleOlderLinesLoaded(msg)
 		}
 		return v, nil
 
-	case workspace.CampfireLineSentMsg:
+	case workspace.ChatLineSentMsg:
 		if msg.Err != nil {
 			// Remove the last pending line on error
 			if len(v.pending) > 0 {
@@ -331,7 +331,7 @@ func (v *Campfire) Update(msg tea.Msg) (workspace.View, tea.Cmd) {
 
 	case workspace.FocusMsg:
 		v.pool.SetFocused(true)
-		if v.mode == campfireModeInput {
+		if v.mode == chatModeInput {
 			return v, v.composer.Focus()
 		}
 		return v, nil
@@ -371,7 +371,7 @@ func (v *Campfire) Update(msg tea.Msg) (workspace.View, tea.Cmd) {
 	return v, nil
 }
 
-func (v *Campfire) handleComposerSubmit(msg widget.ComposerSubmitMsg) tea.Cmd {
+func (v *Chat) handleComposerSubmit(msg widget.ComposerSubmitMsg) tea.Cmd {
 	if msg.Err != nil {
 		return workspace.ReportError(msg.Err, "composing message")
 	}
@@ -386,13 +386,13 @@ func (v *Campfire) handleComposerSubmit(msg widget.ComposerSubmitMsg) tea.Cmd {
 		return v.sendLine(content.Markdown, false)
 	}
 
-	// Rich content: convert markdown to HTML (attachments are disabled for campfire —
+	// Rich content: convert markdown to HTML (attachments are disabled for chat —
 	// the BC3 API only supports file uploads via the web-only Chats::UploadsController).
 	html := richtext.MarkdownToHTML(content.Markdown)
 	return v.sendLine(html, true)
 }
 
-func (v *Campfire) handleOlderLinesLoaded(msg workspace.CampfireLinesLoadedMsg) tea.Cmd {
+func (v *Chat) handleOlderLinesLoaded(msg workspace.ChatLinesLoadedMsg) tea.Cmd {
 	v.loadingMore = false
 	if msg.Err != nil {
 		return workspace.ReportError(msg.Err, "loading older messages")
@@ -421,17 +421,17 @@ func (v *Campfire) handleOlderLinesLoaded(msg workspace.CampfireLinesLoadedMsg) 
 	return nil
 }
 
-func (v *Campfire) handleKey(msg tea.KeyPressMsg) tea.Cmd {
-	if v.mode == campfireModeInput {
+func (v *Chat) handleKey(msg tea.KeyPressMsg) tea.Cmd {
+	if v.mode == chatModeInput {
 		return v.handleInputKey(msg)
 	}
 	return v.handleScrollKey(msg)
 }
 
-func (v *Campfire) handleInputKey(msg tea.KeyPressMsg) tea.Cmd {
+func (v *Chat) handleInputKey(msg tea.KeyPressMsg) tea.Cmd {
 	switch {
 	case key.Matches(msg, v.keys.ScrollMode):
-		v.mode = campfireModeScroll
+		v.mode = chatModeScroll
 		v.composer.Blur()
 		return nil
 
@@ -448,10 +448,10 @@ func (v *Campfire) handleInputKey(msg tea.KeyPressMsg) tea.Cmd {
 	}
 }
 
-func (v *Campfire) handleScrollKey(msg tea.KeyPressMsg) tea.Cmd {
+func (v *Chat) handleScrollKey(msg tea.KeyPressMsg) tea.Cmd {
 	switch {
 	case key.Matches(msg, v.keys.EnterInput):
-		v.mode = campfireModeInput
+		v.mode = chatModeInput
 		return v.composer.Focus()
 
 	case key.Matches(msg, v.keys.ScrollUp):
@@ -479,7 +479,7 @@ func (v *Campfire) handleScrollKey(msg tea.KeyPressMsg) tea.Cmd {
 	return nil
 }
 
-func (v *Campfire) maybeLoadMore() tea.Cmd {
+func (v *Chat) maybeLoadMore() tea.Cmd {
 	if v.viewport.YOffset() == 0 && v.hasMore && !v.loadingMore {
 		v.loadingMore = true
 		v.currentPage++
@@ -492,13 +492,13 @@ func (v *Campfire) maybeLoadMore() tea.Cmd {
 // updateSelectedToLatest sets selectedLineID to the most recent line.
 // This is called after scroll navigation so that boost always targets
 // the latest message in the stream (most common use case).
-func (v *Campfire) updateSelectedToLatest() {
+func (v *Chat) updateSelectedToLatest() {
 	if len(v.lines) > 0 {
 		v.selectedLineID = v.lines[len(v.lines)-1].ID
 	}
 }
 
-func (v *Campfire) boostSelectedLine() tea.Cmd {
+func (v *Chat) boostSelectedLine() tea.Cmd {
 	if len(v.lines) == 0 {
 		return nil
 	}
@@ -512,13 +512,13 @@ func (v *Campfire) boostSelectedLine() tea.Cmd {
 			Target: workspace.BoostTarget{
 				ProjectID:   v.session.Scope().ProjectID,
 				RecordingID: targetID,
-				Title:       "Campfire line",
+				Title:       "Chat line",
 			},
 		}
 	}
 }
 
-func (v *Campfire) sendLine(content string, isHTML bool) tea.Cmd {
+func (v *Chat) sendLine(content string, isHTML bool) tea.Cmd {
 	// Optimistic: append a pending line immediately
 	displayContent := content
 	if isHTML {
@@ -531,7 +531,7 @@ func (v *Campfire) sendLine(content string, isHTML bool) tea.Cmd {
 	})
 	v.renderMessages()
 
-	campfireID := v.campfireID
+	chatID := v.chatID
 	ctx := v.session.Hub().ProjectContext()
 	client := v.session.AccountClient()
 	return func() tea.Msg {
@@ -539,14 +539,14 @@ func (v *Campfire) sendLine(content string, isHTML bool) tea.Cmd {
 		if isHTML {
 			opts = &basecamp.CreateLineOptions{ContentType: "text/html"}
 		}
-		_, err := client.Campfires().CreateLine(ctx, campfireID, content, opts)
-		return workspace.CampfireLineSentMsg{Err: err}
+		_, err := client.Campfires().CreateLine(ctx, chatID, content, opts)
+		return workspace.ChatLineSentMsg{Err: err}
 	}
 }
 
 // reconcilePending removes pending lines whose content now appears in the
 // server-returned lines. This is a best-effort match by content string.
-func (v *Campfire) reconcilePending() {
+func (v *Chat) reconcilePending() {
 	if len(v.pending) == 0 {
 		return
 	}
@@ -567,7 +567,7 @@ func (v *Campfire) reconcilePending() {
 	v.pending = remaining
 }
 
-func (v *Campfire) renderMessages() {
+func (v *Chat) renderMessages() {
 	theme := v.styles.Theme()
 	nameStyle := lipgloss.NewStyle().Bold(true).Foreground(theme.Primary)
 	timeStyle := lipgloss.NewStyle().Foreground(theme.Muted)
@@ -684,7 +684,7 @@ func sameDay(a, b time.Time) bool {
 	return ya == yb && ma == mb && da == db
 }
 
-// formatMessageDate formats a timestamp for the campfire date separator.
+// formatMessageDate formats a timestamp for the chat date separator.
 func formatMessageDate(t time.Time) string {
 	now := time.Now()
 	local := t.In(now.Location())
@@ -766,7 +766,7 @@ func wrapLine(line string, width int) string {
 	return result.String()
 }
 
-func (v *Campfire) resizeViewport() {
+func (v *Chat) resizeViewport() {
 	// Reserve lines for the composer input area
 	inputHeight := 2
 	if v.composer.Mode() == widget.ComposerRich {
@@ -786,7 +786,7 @@ func (v *Campfire) resizeViewport() {
 }
 
 // View implements tea.Model.
-func (v *Campfire) View() string {
+func (v *Chat) View() string {
 	if v.width == 0 || v.height == 0 {
 		return ""
 	}
@@ -796,7 +796,7 @@ func (v *Campfire) View() string {
 			Width(v.width).
 			Height(v.height).
 			Padding(1, 2).
-			Render(v.spinner.View() + " Loading campfire…")
+			Render(v.spinner.View() + " Loading chat…")
 	}
 
 	theme := v.styles.Theme()
@@ -806,7 +806,7 @@ func (v *Campfire) View() string {
 
 	// Mode indicator
 	var modeIndicator string
-	if v.mode == campfireModeScroll {
+	if v.mode == chatModeScroll {
 		modeIndicator = lipgloss.NewStyle().
 			Foreground(theme.Muted).
 			Render("scroll mode ")
@@ -827,11 +827,11 @@ func (v *Campfire) View() string {
 }
 
 // FocusedItem implements workspace.FocusedRecording.
-func (v *Campfire) FocusedItem() workspace.FocusedItemScope {
+func (v *Chat) FocusedItem() workspace.FocusedItemScope {
 	return workspace.FocusedItemScope{} // no single-item URL for chat stream
 }
 
-func (v *Campfire) updateLastID() {
+func (v *Chat) updateLastID() {
 	for _, line := range v.lines {
 		if line.ID > v.lastID {
 			v.lastID = line.ID
@@ -839,7 +839,7 @@ func (v *Campfire) updateLastID() {
 	}
 }
 
-func (v *Campfire) schedulePoll() tea.Cmd {
+func (v *Chat) schedulePoll() tea.Cmd {
 	interval := v.pool.PollInterval()
 	if interval == 0 {
 		return nil
@@ -854,33 +854,33 @@ func (v *Campfire) schedulePoll() tea.Cmd {
 
 // -- Commands
 
-func (v *Campfire) fetchOlderLines() tea.Cmd {
+func (v *Chat) fetchOlderLines() tea.Cmd {
 	projectID := v.projectID
-	campfireID := v.campfireID
+	chatID := v.chatID
 	page := v.currentPage
 	ctx := v.session.Hub().ProjectContext()
 	client := v.session.AccountClient()
 	return func() tea.Msg {
-		path := fmt.Sprintf("/buckets/%d/chats/%d/lines.json?page=%d", projectID, campfireID, page)
+		path := fmt.Sprintf("/buckets/%d/chats/%d/lines.json?page=%d", projectID, chatID, page)
 		resp, err := client.Get(ctx, path)
 		if err != nil {
-			return workspace.CampfireLinesLoadedMsg{Err: err, Prepend: true}
+			return workspace.ChatLinesLoadedMsg{Err: err, Prepend: true}
 		}
 
-		var lines []campfireLineJSON
+		var lines []chatLineJSON
 		if err := json.Unmarshal(resp.Data, &lines); err != nil {
-			return workspace.CampfireLinesLoadedMsg{Err: err, Prepend: true}
+			return workspace.ChatLinesLoadedMsg{Err: err, Prepend: true}
 		}
 
 		totalCount := parseTotalCountHeader(resp.Headers)
 
-		infos := make([]workspace.CampfireLineInfo, 0, len(lines))
+		infos := make([]workspace.ChatLineInfo, 0, len(lines))
 		for _, line := range lines {
 			creator := ""
 			if line.Creator != nil {
 				creator = line.Creator.Name
 			}
-			infos = append(infos, workspace.CampfireLineInfo{
+			infos = append(infos, workspace.ChatLineInfo{
 				ID:          line.ID,
 				Body:        line.Content,
 				Creator:     creator,
@@ -892,7 +892,7 @@ func (v *Campfire) fetchOlderLines() tea.Cmd {
 		// API returns newest-first; reverse for chronological display
 		reverseLines(infos)
 
-		return workspace.CampfireLinesLoadedMsg{
+		return workspace.ChatLinesLoadedMsg{
 			Lines:      infos,
 			TotalCount: totalCount,
 			Prepend:    true,
@@ -900,8 +900,8 @@ func (v *Campfire) fetchOlderLines() tea.Cmd {
 	}
 }
 
-// campfireLineJSON mirrors the API JSON shape for manual parsing.
-type campfireLineJSON struct {
+// chatLineJSON mirrors the API JSON shape for manual parsing.
+type chatLineJSON struct {
 	ID        int64     `json:"id"`
 	Content   string    `json:"content"`
 	CreatedAt time.Time `json:"created_at"`
@@ -930,7 +930,7 @@ func parseTotalCountHeader(headers http.Header) int {
 	return n
 }
 
-func reverseLines(lines []workspace.CampfireLineInfo) {
+func reverseLines(lines []workspace.ChatLineInfo) {
 	for i, j := 0, len(lines)-1; i < j; i, j = i+1, j-1 {
 		lines[i], lines[j] = lines[j], lines[i]
 	}

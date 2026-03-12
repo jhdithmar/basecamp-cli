@@ -13,7 +13,7 @@ import (
 	"github.com/gofrs/flock"
 )
 
-// ReadTracker tracks the last-read line ID per campfire room.
+// ReadTracker tracks the last-read line ID per chat room.
 type ReadTracker struct {
 	mu    sync.Mutex
 	dir   string
@@ -46,7 +46,7 @@ func (rt *ReadTracker) LastRead(room RoomID) int64 {
 }
 
 // UnreadCount returns the number of lines after the last-read position.
-func (rt *ReadTracker) UnreadCount(room RoomID, lines []CampfireLineInfo) int {
+func (rt *ReadTracker) UnreadCount(room RoomID, lines []ChatLineInfo) int {
 	rt.mu.Lock()
 	lastID := rt.local[room.Key()]
 	rt.mu.Unlock()

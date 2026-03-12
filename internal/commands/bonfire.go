@@ -28,14 +28,14 @@ type BonfirePane struct {
 func NewBonfireCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "bonfire",
-		Short: "Multi-campfire orchestration (experimental)",
-		Long: `Orchestrate multiple campfire views using terminal multiplexers (tmux/zellij).
+		Short: "Multi-chat orchestration (experimental)",
+		Long: `Orchestrate multiple chat views using terminal multiplexers (tmux/zellij).
 
 Requires an active tmux or zellij session.
 
 This is an experimental feature. Enable it with:
   basecamp config set experimental.bonfire true --global`,
-		Annotations: map[string]string{"agent_notes": "bonfire split opens a new pane with a campfire\nbonfire layout saves/restores pane arrangements"},
+		Annotations: map[string]string{"agent_notes": "bonfire split opens a new pane with a chat\nbonfire layout saves/restores pane arrangements"},
 	}
 
 	cmd.AddCommand(
@@ -49,8 +49,8 @@ This is an experimental feature. Enable it with:
 func newBonfireSplitCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "split <room-url>",
-		Short: "Open a campfire in a new multiplexer pane",
-		Long:  "Split the current terminal and open a campfire room in the new pane.",
+		Short: "Open a chat in a new multiplexer pane",
+		Long:  "Split the current terminal and open a chat room in the new pane.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
@@ -76,7 +76,7 @@ func newBonfireSplitCmd() *cobra.Command {
 				"url":         roomURL,
 				"multiplexer": string(mux),
 				"status":      "opened",
-			}, output.WithSummary(fmt.Sprintf("Opened campfire in new %s pane", mux)))
+			}, output.WithSummary(fmt.Sprintf("Opened chat in new %s pane", mux)))
 		},
 	}
 }
@@ -85,7 +85,7 @@ func newBonfireLayoutCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "layout",
 		Short: "Manage bonfire layouts",
-		Long:  "Save and restore multi-campfire layouts.",
+		Long:  "Save and restore multi-chat layouts.",
 	}
 
 	cmd.AddCommand(
@@ -101,7 +101,7 @@ func newBonfireLayoutSaveCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "save <name> <url>...",
 		Short: "Save a bonfire layout",
-		Long:  "Save a named layout with the given campfire URLs.",
+		Long:  "Save a named layout with the given chat URLs.",
 		Args:  cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())
@@ -148,7 +148,7 @@ func newBonfireLayoutLoadCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "load <name>",
 		Short: "Restore a saved bonfire layout",
-		Long:  "Open multiplexer panes for each campfire in the named layout.",
+		Long:  "Open multiplexer panes for each chat in the named layout.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := appctx.FromContext(cmd.Context())

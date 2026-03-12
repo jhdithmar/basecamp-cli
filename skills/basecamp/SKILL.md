@@ -3,7 +3,7 @@ name: basecamp
 description: |
   Interact with Basecamp via the Basecamp CLI. Full API coverage: projects, todos, cards,
   messages, files, schedule, check-ins, timeline, recordings, templates, webhooks,
-  subscriptions, lineup, and campfire. Use for ANY Basecamp question or action.
+  subscriptions, lineup, and chat. Use for ANY Basecamp question or action.
 triggers:
   # Direct invocations
   - basecamp
@@ -12,7 +12,7 @@ triggers:
   - basecamp todo
   - basecamp project
   - basecamp card
-  - basecamp campfire
+  - basecamp chat
   - basecamp message
   - basecamp file
   - basecamp document
@@ -63,7 +63,7 @@ argument-hint: "[action] [args...]"
 
 # /basecamp - Basecamp Workflow Command
 
-Full CLI coverage: 130 endpoints across todos, cards, messages, files, schedule, check-ins, timeline, recordings, templates, webhooks, subscriptions, lineup, and campfire.
+Full CLI coverage: 130 endpoints across todos, cards, messages, files, schedule, check-ins, timeline, recordings, templates, webhooks, subscriptions, lineup, and chat.
 
 ## Agent Invariants
 
@@ -146,7 +146,7 @@ basecamp <cmd> --page 1     # First page only, no auto-pagination
 | Move card | `basecamp cards move <id> --to <column> --in <project> --json` |
 | Post message | `basecamp message "Title" "Body" --in <project> --json` |
 | Post silently | `basecamp message "Title" "Body" --no-subscribe --in <project> --json` |
-| Post to campfire | `basecamp campfire post "Message" --in <project> --json` |
+| Post to chat | `basecamp chat post "Message" --in <project> --json` |
 | Add comment | `basecamp comment <recording_id> "Text" --in <project> --json` |
 | Search | `basecamp search "query" --json` |
 | Parse URL | `basecamp url parse "<url>" --json` |
@@ -231,7 +231,7 @@ basecamp todo "Review PR #42" --in <project> --assignee me --due tomorrow
 
 # When merged
 basecamp done <todo_id>
-basecamp campfire post "Merged PR #42" --in <project>
+basecamp chat post "Merged PR #42" --in <project>
 ```
 
 ### Bulk Process Overdue Todos
@@ -508,14 +508,14 @@ basecamp lineup delete <id>
 
 **Note:** Lineup markers are account-wide, not project-scoped.
 
-### Campfire
+### Chat
 
 ```bash
-basecamp campfire --in <project> --json           # List campfires
-basecamp campfire messages --in <project> --json  # List messages
-basecamp campfire post "Hello!" --in <project>
-basecamp campfire line <line_id> --in <project>   # Show line
-basecamp campfire delete <line_id> --in <project> --force # Delete line (permanent, not trashable)
+basecamp chat --in <project> --json           # List chats
+basecamp chat messages --in <project> --json  # List messages
+basecamp chat post "Hello!" --in <project>
+basecamp chat line <line_id> --in <project>   # Show line
+basecamp chat delete <line_id> --in <project> --force # Delete line (permanent, not trashable)
 ```
 
 ### People
@@ -630,7 +630,7 @@ cat ~/.config/basecamp/accounts.json              # Check available accounts
 - `basecamp todo "Buy milk"` (not `--content`)
 - `basecamp card "New feature"` (not `--title`)
 - `basecamp message "Subject" "Body"` (not `--subject`)
-- `basecamp campfire post "Hello"` (not `--content`)
+- `basecamp chat post "Hello"` (not `--content`)
 - `basecamp comment <id> "Text"` (not a flag)
 - `basecamp webhooks create "https://..." --in <project>` (not `--url`)
 - `basecamp checkins answer create <question-id> "content"` (not `--question`)

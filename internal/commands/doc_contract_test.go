@@ -37,7 +37,7 @@ func TestDocContractArgs(t *testing.T) {
 		{"basecamp timeline", []string{"me"}},
 		{"basecamp schedule", nil},                    // [action] stripped
 		{"basecamp people", nil},                      // not runnable
-		{"basecamp campfire", nil},                    // [action] stripped
+		{"basecamp chat", nil},                        // [action] stripped
 		{"basecamp boost", nil},                       // [action] stripped
 		{"basecamp projects list", nil},               // no args
 		{"basecamp webhooks create", []string{"url"}}, // [flags] stripped

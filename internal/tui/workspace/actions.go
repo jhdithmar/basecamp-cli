@@ -138,13 +138,13 @@ func DefaultActions() *Registry {
 		},
 	})
 	r.Register(Action{
-		Name:        ":campfire",
-		Aliases:     []string{"chat", "fire"},
-		Description: "Navigate to campfire",
+		Name:        ":chat",
+		Aliases:     []string{"campfire", "fire"},
+		Description: "Navigate to chat",
 		Category:    "project",
 		Scope:       ScopeProject,
 		Execute: func(s *Session) tea.Cmd {
-			return Navigate(ViewCampfire, s.Scope())
+			return Navigate(ViewChat, s.Scope())
 		},
 	})
 	r.Register(Action{
@@ -299,8 +299,8 @@ func DefaultActions() *Registry {
 	})
 	r.Register(Action{
 		Name:         ":bonfire",
-		Aliases:      []string{"river", "campfires"},
-		Description:  "Multi-campfire river view",
+		Aliases:      []string{"river", "campfires", "chats"},
+		Description:  "Multi-chat river view",
 		Category:     "navigation",
 		Scope:        ScopeAny,
 		Experimental: "bonfire",
@@ -311,7 +311,7 @@ func DefaultActions() *Registry {
 	r.Register(Action{
 		Name:         ":front-page",
 		Aliases:      []string{"overview", "newspaper"},
-		Description:  "Campfire overview",
+		Description:  "Chat overview",
 		Category:     "navigation",
 		Scope:        ScopeAny,
 		Experimental: "bonfire",

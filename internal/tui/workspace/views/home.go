@@ -121,8 +121,8 @@ func (v *Home) ShortHelp() []key.Binding {
 	switch meta.viewTarget {
 	case workspace.ViewDock:
 		enterDesc = "open project"
-	case workspace.ViewCampfire:
-		enterDesc = "open campfire"
+	case workspace.ViewChat:
+		enterDesc = "open chat"
 	default:
 		if meta.recordType != "" {
 			label := strings.ToLower(meta.recordType)
@@ -402,8 +402,8 @@ func (v *Home) syncRecents() {
 		pid, _ := strconv.ParseInt(r.ProjectID, 10, 64)
 
 		target := workspace.ViewDetail
-		if r.Description == campfireRecordingType {
-			target = workspace.ViewCampfire
+		if r.Description == chatRecordingType {
+			target = workspace.ViewChat
 		}
 		v.itemMeta[id] = homeItemMeta{
 			accountID:   r.AccountID,
@@ -591,10 +591,10 @@ func (v *Home) openSelected() tea.Cmd {
 		}
 		return workspace.Navigate(workspace.ViewDock, scope)
 
-	case workspace.ViewCampfire:
+	case workspace.ViewChat:
 		scope.ToolType = "chat"
 		scope.ToolID = meta.recordingID
-		return workspace.Navigate(workspace.ViewCampfire, scope)
+		return workspace.Navigate(workspace.ViewChat, scope)
 
 	case workspace.ViewDetail:
 		scope.RecordingID = meta.recordingID
