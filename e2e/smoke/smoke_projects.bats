@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# smoke_projects.bats - Level 0: Projects and accounts
+# smoke_projects.bats - Level 0: Projects and accounts (read-only)
 #
 # Discovery is minimal: only ensure_project for the show test.
 # accounts list and projects list are tested without pre-discovery
@@ -33,7 +33,7 @@ setup_file() {
 
 @test "projects show returns project detail" {
   local proj_file="$BATS_FILE_TMPDIR/project_id"
-  [[ -f "$proj_file" ]] || skip "projects list did not produce a project ID"
+  [[ -f "$proj_file" ]] || mark_unverifiable "projects list did not produce a project ID"
   local proj_id
   proj_id=$(<"$proj_file")
 
@@ -42,4 +42,12 @@ setup_file() {
   assert_json_value '.ok' 'true'
   assert_json_not_null '.data.id'
   assert_json_not_null '.data.name'
+}
+
+@test "accounts use sets default account" {
+  ensure_account || return 0  # ensure_account traces unverifiable internally
+
+  run_smoke basecamp accounts use "$QA_ACCOUNT" --json
+  assert_success
+  assert_json_value '.ok' 'true'
 }

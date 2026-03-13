@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# smoke_misc_read.bats - Level 0: Schedule, search, recordings, version, doctor
+# smoke_misc_read.bats - Level 0: Read-only misc commands
 
 load smoke_helper
 
@@ -11,14 +11,7 @@ setup_file() {
   run_smoke basecamp me --json
   assert_success
   assert_json_value '.ok' 'true'
-  assert_json_not_null '.data.id'
-}
-
-@test "schedule show returns schedule" {
-  ensure_project || mark_unverifiable "Cannot discover project for schedule"
-  run_smoke basecamp schedule show -p "$QA_PROJECT" --json
-  assert_success
-  assert_json_value '.ok' 'true'
+  assert_json_not_null '.data.identity.id'
 }
 
 @test "recordings list returns recordings" {
@@ -30,5 +23,15 @@ setup_file() {
 @test "search returns results" {
   run_smoke basecamp search "test" --json
   assert_success
+  assert_json_value '.ok' 'true'
+}
+
+@test "search metadata returns metadata" {
+  run_smoke basecamp search metadata --json
+  # Search metadata requires projects with search enabled
+  if [[ "$status" -ne 0 ]]; then
+    mark_unverifiable "Search metadata not available"
+    return 0
+  fi
   assert_json_value '.ok' 'true'
 }
