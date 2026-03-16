@@ -158,19 +158,19 @@ func (r *Resolver) promptForDockTool(tools []DockTool, friendlyName string) (*Do
 
 // multiToolError creates an error message listing available tools.
 func (r *Resolver) multiToolError(tools []DockTool, friendlyName, flagName string) error {
-	var toolList strings.Builder
+	lines := make([]string, 0, len(tools))
 	for _, tool := range tools {
 		title := tool.Title
 		if title == "" {
 			title = friendlyName
 		}
-		fmt.Fprintf(&toolList, "\n  - %s (ID: %d)", title, tool.ID)
+		lines = append(lines, fmt.Sprintf("  %d  %s", tool.ID, title))
 	}
 
 	return &output.Error{
 		Code:    output.CodeAmbiguous,
-		Message: fmt.Sprintf("Project has %d %ss", len(tools), friendlyName),
-		Hint:    fmt.Sprintf("Use --%s <id> to select one. Available:%s", flagName, toolList.String()),
+		Message: fmt.Sprintf("Multiple %s found", output.PluralNoun(friendlyName)),
+		Hint:    fmt.Sprintf("Specify one with --%s <id>:\n%s", flagName, strings.Join(lines, "\n")),
 	}
 }
 

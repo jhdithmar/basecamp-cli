@@ -304,9 +304,30 @@ func TestGetDockToolID_AmbiguousToolShowsFlagHint(t *testing.T) {
 	var e *output.Error
 	require.True(t, errors.As(err, &e), "expected *output.Error, got %T: %v", err, err)
 	assert.Equal(t, output.CodeAmbiguous, e.Code)
-	assert.Contains(t, e.Hint, "Use --chat <id> to specify.")
-	assert.Contains(t, e.Hint, "General (ID: 100)")
-	assert.Contains(t, e.Hint, "Engineering (ID: 200)")
+	assert.Equal(t, "Multiple chats found", e.Message)
+	assert.Contains(t, e.Hint, "Specify one with --chat <id>:")
+	assert.Contains(t, e.Hint, "  100  General")
+	assert.Contains(t, e.Hint, "  200  Engineering")
+}
+
+func TestGetDockToolID_AmbiguousInboxPluralizesCorrectly(t *testing.T) {
+	transport := &dockTestTransport{
+		projectJSON: `{"id": 1, "dock": [
+			{"name": "inbox", "id": 300, "title": "Support", "enabled": true},
+			{"name": "inbox", "id": 400, "title": "Billing", "enabled": true}
+		]}`,
+	}
+	app := newDockTestApp(t, transport)
+
+	_, err := getDockToolID(context.Background(), app, "1", "inbox", "", "inbox", "inbox")
+	require.Error(t, err)
+
+	var e *output.Error
+	require.True(t, errors.As(err, &e), "expected *output.Error, got %T: %v", err, err)
+	assert.Equal(t, "Multiple inboxes found", e.Message)
+	assert.Contains(t, e.Hint, "Specify one with --inbox <id>:")
+	assert.Contains(t, e.Hint, "  300  Support")
+	assert.Contains(t, e.Hint, "  400  Billing")
 }
 
 func TestGetDockTools_ReturnsMultipleEnabled(t *testing.T) {
