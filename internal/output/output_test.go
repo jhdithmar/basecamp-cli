@@ -2215,9 +2215,7 @@ func TestMarkdownRenderObjectPreservesURLs(t *testing.T) {
 }
 
 func TestStyledRenderTablePreservesURLs(t *testing.T) {
-	// URL must be >40 chars (to exercise the cap exemption) but short enough
-	// to fit beside "name" in an 80-char default terminal.
-	url := "https://3.basecampapi.com/1234567/todolists/98765.json"
+	url := "https://3.basecampapi.com/1234567/buckets/12345678/todolists/9876543210.json"
 	data := []any{
 		map[string]any{"name": "Tasks", "todolists_url": url},
 	}
@@ -2518,12 +2516,32 @@ func TestSelectColumnsExemptsURLColumnsForSuffixFields(t *testing.T) {
 	}
 	selected := r.selectColumns(cols, data)
 
+	var found bool
 	for _, col := range selected {
 		if col.key == "todolists_url" {
+			found = true
 			assert.Greater(t, col.width, 40, "URL column with _url suffix should retain actual width")
 			assert.True(t, col.containsURL, "URL column should be flagged")
 		}
 	}
+	require.True(t, found, "todolists_url column must be present in selected columns")
+}
+
+func TestSelectColumnsPreservesURLColumnsWhenOverflowing(t *testing.T) {
+	url := "https://3.basecampapi.com/1234567/buckets/12345678/people/9999999.json"
+	r := &Renderer{width: 60} // URL (70) + name (5) + padding (4) = 79 > 60
+	cols := []column{
+		{key: "name", header: "Name", priority: 2},
+		{key: "href", header: "Href", priority: 5},
+	}
+	data := []map[string]any{
+		{"name": "Alice", "href": url},
+	}
+	selected := r.selectColumns(cols, data)
+
+	require.Len(t, selected, 2, "both columns should survive even when total exceeds terminal width")
+	assert.Equal(t, "href", selected[1].key)
+	assert.Equal(t, len(url), selected[1].width, "URL column should retain its full measured width")
 }
 
 // =============================================================================
