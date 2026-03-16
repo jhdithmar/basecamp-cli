@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -41,7 +42,16 @@ var agentSetupHandlers = map[string]agentSetupHandler{
 func runClaudeSetup(cmd *cobra.Command, styles *tui.Styles) error {
 	w := cmd.OutOrStdout()
 
-	// If the plugin is already installed, skip to skill link repair (no binary needed)
+	// Clean up stale plugin entries from old marketplaces before checking status.
+	if staleKeys := harness.StalePluginKeys(); len(staleKeys) > 0 {
+		if claudePath := harness.FindClaudeBinary(); claudePath != "" {
+			for _, key := range removeStaleClaudePlugins(cmd.Context(), claudePath, staleKeys) {
+				fmt.Fprintln(w, styles.RenderStatus(true, fmt.Sprintf("Removed stale plugin %s", key)))
+			}
+		}
+	}
+
+	// If the plugin is already installed correctly, skip to skill link repair (no binary needed)
 	pluginOK := harness.CheckClaudePlugin().Status == "pass"
 	if pluginOK {
 		fmt.Fprintln(w, styles.RenderStatus(true, "Claude Code plugin installed"))
@@ -203,7 +213,14 @@ func wizardAgents(cmd *cobra.Command, styles *tui.Styles) error {
 func runClaudeSetupNonInteractive(cmd *cobra.Command) error {
 	var errs []string
 
-	// If the plugin is already installed, skip to skill link repair (no binary needed)
+	// Clean up stale plugin entries from old marketplaces before checking status.
+	if staleKeys := harness.StalePluginKeys(); len(staleKeys) > 0 {
+		if claudePath := harness.FindClaudeBinary(); claudePath != "" {
+			removeStaleClaudePlugins(cmd.Context(), claudePath, staleKeys)
+		}
+	}
+
+	// If the plugin is already installed correctly, skip to skill link repair (no binary needed)
 	if check := harness.CheckClaudePlugin(); check.Status != "pass" {
 		claudePath := harness.FindClaudeBinary()
 		if claudePath == "" {
@@ -235,6 +252,26 @@ func runClaudeSetupNonInteractive(cmd *cobra.Command) error {
 		return fmt.Errorf("%s", strings.Join(errs, "; "))
 	}
 	return nil
+}
+
+// removeStaleClaudePlugins uninstalls plugin entries from old/dead marketplaces.
+// Each key may have multiple entries (duplicates), so we loop until uninstall fails.
+func removeStaleClaudePlugins(ctx context.Context, claudePath string, keys []string) []string {
+	var removed []string
+	for _, key := range keys {
+		n := 0
+		for i := 0; i < 10; i++ {
+			c := exec.CommandContext(ctx, claudePath, "plugin", "uninstall", key) //nolint:gosec // G204: claudePath from FindClaudeBinary
+			if err := c.Run(); err != nil {
+				break
+			}
+			n++
+		}
+		if n > 0 {
+			removed = append(removed, key)
+		}
+	}
+	return removed
 }
 
 // claudeManualInstallHint returns the two-line manual install instructions.
