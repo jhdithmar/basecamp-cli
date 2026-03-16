@@ -55,24 +55,28 @@ use --message-board <id> to specify which one.`,
 func newMessagesListCmd(project *string, messageBoard *string) *cobra.Command {
 	var limit, page int
 	var all bool
+	var sortField string
+	var reverse bool
 
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List messages",
 		Long:  "List all messages in a project's message board.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runMessagesList(cmd, *project, *messageBoard, limit, page, all)
+			return runMessagesList(cmd, *project, *messageBoard, limit, page, all, sortField, reverse)
 		},
 	}
 
 	cmd.Flags().IntVarP(&limit, "limit", "n", 0, "Maximum number of messages to fetch (0 = default 100)")
 	cmd.Flags().BoolVar(&all, "all", false, "Fetch all messages (no limit)")
 	cmd.Flags().IntVar(&page, "page", 0, "Fetch a single page (use --all for everything)")
+	cmd.Flags().StringVar(&sortField, "sort", "", "Sort by field (title, created, updated)")
+	cmd.Flags().BoolVar(&reverse, "reverse", false, "Reverse sort order")
 
 	return cmd
 }
 
-func runMessagesList(cmd *cobra.Command, project string, messageBoard string, limit, page int, all bool) error {
+func runMessagesList(cmd *cobra.Command, project string, messageBoard string, limit, page int, all bool, sortField string, reverse bool) error {
 	app := appctx.FromContext(cmd.Context())
 
 	// Validate flag combinations
@@ -84,6 +88,11 @@ func runMessagesList(cmd *cobra.Command, project string, messageBoard string, li
 	}
 	if page > 1 {
 		return output.ErrUsage("only --page 1 is supported; use --all to fetch everything")
+	}
+	if sortField != "" {
+		if err := validateSortField(sortField, []string{"title", "created", "updated"}); err != nil {
+			return err
+		}
 	}
 
 	// Resolve account (enables interactive prompt if needed)
@@ -141,6 +150,10 @@ func runMessagesList(cmd *cobra.Command, project string, messageBoard string, li
 		return convertSDKError(err)
 	}
 	messages := messagesResult.Messages
+
+	if sortField != "" {
+		sortMessages(messages, sortField, reverse)
+	}
 
 	// Build response options
 	respOpts := []output.ResponseOption{

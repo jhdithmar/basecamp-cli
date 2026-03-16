@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -159,13 +160,15 @@ func newPeopleListCmd() *cobra.Command {
 	var projectID string
 	var limit, page int
 	var all bool
+	var sortField string
+	var reverse bool
 
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List people",
 		Long:  "List all people in your Basecamp account, or in a specific project.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPeopleList(cmd, projectID, limit, page, all)
+			return runPeopleList(cmd, projectID, limit, page, all, sortField, reverse)
 		},
 	}
 
@@ -173,11 +176,13 @@ func newPeopleListCmd() *cobra.Command {
 	cmd.Flags().IntVarP(&limit, "limit", "n", 0, "Maximum number of people to fetch (0 = all)")
 	cmd.Flags().BoolVar(&all, "all", false, "Fetch all people (no limit)")
 	cmd.Flags().IntVar(&page, "page", 0, "Fetch a single page (use --all for everything)")
+	cmd.Flags().StringVar(&sortField, "sort", "", "Sort by field (name)")
+	cmd.Flags().BoolVar(&reverse, "reverse", false, "Reverse sort order")
 
 	return cmd
 }
 
-func runPeopleList(cmd *cobra.Command, projectID string, limit, page int, all bool) error {
+func runPeopleList(cmd *cobra.Command, projectID string, limit, page int, all bool, sortField string, reverse bool) error {
 	app := appctx.FromContext(cmd.Context())
 
 	// Validate flag combinations
@@ -189,6 +194,11 @@ func runPeopleList(cmd *cobra.Command, projectID string, limit, page int, all bo
 	}
 	if page > 1 {
 		return output.ErrUsage("only --page 1 is supported; use --all to fetch everything")
+	}
+	if sortField != "" {
+		if err := validateSortField(sortField, []string{"name"}); err != nil {
+			return err
+		}
 	}
 
 	if err := ensureAccount(cmd, app); err != nil {
@@ -235,7 +245,19 @@ func runPeopleList(cmd *cobra.Command, projectID string, limit, page int, all bo
 		updatePeopleCache(people, app.Config.CacheDir)
 	}
 
-	// Slim output and sort by name
+	// Sort raw people before slimming (sort functions need full SDK type)
+	if sortField != "" {
+		sortPeople(people, sortField, reverse)
+	} else {
+		sort.Slice(people, func(i, j int) bool {
+			return strings.ToLower(people[i].Name) < strings.ToLower(people[j].Name)
+		})
+		if reverse {
+			slices.Reverse(people)
+		}
+	}
+
+	// Slim output
 	type personListItem struct {
 		ID       int64  `json:"id"`
 		Name     string `json:"name"`
@@ -253,9 +275,6 @@ func runPeopleList(cmd *cobra.Command, projectID string, limit, page int, all bo
 			Admin:    p.Admin,
 		}
 	}
-	sort.Slice(items, func(i, j int) bool {
-		return items[i].Name < items[j].Name
-	})
 
 	summary := fmt.Sprintf("%d people", len(items))
 	breadcrumbs := []output.Breadcrumb{

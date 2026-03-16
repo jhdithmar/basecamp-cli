@@ -47,13 +47,15 @@ to disambiguate when needed.`,
 func newTodolistsListCmd(project, todosetID *string) *cobra.Command {
 	var limit, page int
 	var all, archived bool
+	var sortField string
+	var reverse bool
 
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List todolists",
 		Long:  "List all todolists in a project.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runTodolistsList(cmd, *project, *todosetID, limit, page, all, archived)
+			return runTodolistsList(cmd, *project, *todosetID, limit, page, all, archived, sortField, reverse)
 		},
 	}
 
@@ -62,11 +64,13 @@ func newTodolistsListCmd(project, todosetID *string) *cobra.Command {
 	cmd.Flags().BoolVar(&all, "all", false, "Fetch all todolists (no limit)")
 	cmd.Flags().IntVar(&page, "page", 0, "Fetch a single page (use --all for everything)")
 	cmd.Flags().BoolVar(&archived, "archived", false, "Show archived todolists")
+	cmd.Flags().StringVar(&sortField, "sort", "", "Sort by field (title, created, updated, position)")
+	cmd.Flags().BoolVar(&reverse, "reverse", false, "Reverse sort order")
 
 	return cmd
 }
 
-func runTodolistsList(cmd *cobra.Command, project, todosetFlag string, limit, page int, all, archived bool) error {
+func runTodolistsList(cmd *cobra.Command, project, todosetFlag string, limit, page int, all, archived bool, sortField string, reverse bool) error {
 	app := appctx.FromContext(cmd.Context())
 	if app == nil {
 		return fmt.Errorf("app not initialized")
@@ -81,6 +85,11 @@ func runTodolistsList(cmd *cobra.Command, project, todosetFlag string, limit, pa
 	}
 	if page > 1 {
 		return output.ErrUsage("only --page 1 is supported; use --all to fetch everything")
+	}
+	if sortField != "" {
+		if err := validateSortField(sortField, []string{"title", "created", "updated", "position"}); err != nil {
+			return err
+		}
 	}
 
 	if err := ensureAccount(cmd, app); err != nil {
@@ -139,6 +148,10 @@ func runTodolistsList(cmd *cobra.Command, project, todosetFlag string, limit, pa
 		return convertSDKError(err)
 	}
 	todolists := todolistsResult.Todolists
+
+	if sortField != "" {
+		sortTodolists(todolists, sortField, reverse)
+	}
 
 	respOpts := []output.ResponseOption{
 		output.WithEntity("todolist"),

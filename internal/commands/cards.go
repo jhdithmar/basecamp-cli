@@ -55,13 +55,15 @@ func newCardsListCmd(project, cardTable *string) *cobra.Command {
 	var limit int
 	var page int
 	var all bool
+	var sortField string
+	var reverse bool
 
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List cards",
 		Long:  "List all cards in a project's card table.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCardsList(cmd, *project, column, *cardTable, limit, page, all)
+			return runCardsList(cmd, *project, column, *cardTable, limit, page, all, sortField, reverse)
 		},
 	}
 
@@ -69,11 +71,13 @@ func newCardsListCmd(project, cardTable *string) *cobra.Command {
 	cmd.Flags().IntVarP(&limit, "limit", "n", 0, "Maximum number of cards to fetch (0 = all)")
 	cmd.Flags().BoolVar(&all, "all", false, "Fetch all cards (no limit)")
 	cmd.Flags().IntVar(&page, "page", 0, "Fetch a single page (use --all for everything)")
+	cmd.Flags().StringVar(&sortField, "sort", "", "Sort by field (title, created, updated, position, due)")
+	cmd.Flags().BoolVar(&reverse, "reverse", false, "Reverse sort order")
 
 	return cmd
 }
 
-func runCardsList(cmd *cobra.Command, project, column, cardTable string, limit, page int, all bool) error {
+func runCardsList(cmd *cobra.Command, project, column, cardTable string, limit, page int, all bool, sortField string, reverse bool) error {
 	app := appctx.FromContext(cmd.Context())
 
 	// Validate flag combinations
@@ -85,6 +89,14 @@ func runCardsList(cmd *cobra.Command, project, column, cardTable string, limit, 
 	}
 	if page > 1 {
 		return output.ErrUsage("only --page 1 is supported; use --all to fetch everything")
+	}
+	if sortField != "" {
+		// Validate against the superset of all allowed fields early, before any
+		// API calls. Context-specific restrictions (e.g. no position in aggregate)
+		// are enforced at each branch below.
+		if err := validateSortField(sortField, []string{"title", "created", "updated", "position", "due"}); err != nil {
+			return err
+		}
 	}
 
 	// Pagination flags only make sense when listing a single column
@@ -153,6 +165,10 @@ func runCardsList(cmd *cobra.Command, project, column, cardTable string, limit, 
 			return convertSDKError(err)
 		}
 
+		if sortField != "" {
+			sortCards(cardsResult.Cards, sortField, reverse)
+		}
+
 		return app.OK(cardsResult.Cards,
 			output.WithSummary(fmt.Sprintf("%d cards", len(cardsResult.Cards))),
 			output.WithBreadcrumbs(cardsListBreadcrumbs(resolvedProjectID)...),
@@ -192,7 +208,16 @@ func runCardsList(cmd *cobra.Command, project, column, cardTable string, limit, 
 			return convertSDKError(err)
 		}
 		allCards = cardsResult.Cards
+
+		if sortField != "" {
+			sortCards(allCards, sortField, reverse)
+		}
 	} else {
+		// No position in aggregate — it's only meaningful within a single column
+		if sortField == "position" {
+			return output.ErrUsage("--sort position requires --column (position is per-column)")
+		}
+
 		// Get cards from all columns (no pagination - already validated above)
 		for _, col := range cardTableData.Lists {
 			cardsResult, err := app.Account().Cards().List(cmd.Context(), col.ID, nil)
@@ -200,6 +225,10 @@ func runCardsList(cmd *cobra.Command, project, column, cardTable string, limit, 
 				continue // Skip columns with errors
 			}
 			allCards = append(allCards, cardsResult.Cards...)
+		}
+
+		if sortField != "" {
+			sortCards(allCards, sortField, reverse)
 		}
 	}
 
