@@ -168,16 +168,24 @@ func newPeopleListCmd() *cobra.Command {
 		Short: "List people",
 		Long:  "List all people in your Basecamp account, or in a specific project.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if projectID == "" {
+				projectID = appctx.FromContext(cmd.Context()).Flags.Project
+			}
 			return runPeopleList(cmd, projectID, limit, page, all, sortField, reverse)
 		},
 	}
 
 	cmd.Flags().StringVarP(&projectID, "project", "p", "", "List people in a specific project")
+	cmd.Flags().StringVar(&projectID, "in", "", "List people in a specific project (alias for --project)")
 	cmd.Flags().IntVarP(&limit, "limit", "n", 0, "Maximum number of people to fetch (0 = all)")
 	cmd.Flags().BoolVar(&all, "all", false, "Fetch all people (no limit)")
 	cmd.Flags().IntVar(&page, "page", 0, "Fetch a single page (use --all for everything)")
 	cmd.Flags().StringVar(&sortField, "sort", "", "Sort by field (name)")
 	cmd.Flags().BoolVar(&reverse, "reverse", false, "Reverse sort order")
+
+	completer := completion.NewCompleter(nil)
+	_ = cmd.RegisterFlagCompletionFunc("project", completer.ProjectNameCompletion())
+	_ = cmd.RegisterFlagCompletionFunc("in", completer.ProjectNameCompletion())
 
 	return cmd
 }
@@ -394,12 +402,22 @@ func newPeopleAddCmd() *cobra.Command {
 			if len(args) == 0 {
 				return missingArg(cmd, "<person-id>...")
 			}
+			if projectID == "" {
+				projectID = appctx.FromContext(cmd.Context()).Flags.Project
+			}
+			if projectID == "" {
+				return output.ErrUsage("--project (or --in) is required")
+			}
 			return runPeopleAdd(cmd, args, projectID)
 		},
 	}
 
 	cmd.Flags().StringVarP(&projectID, "project", "p", "", "Project to add people to (required)")
-	_ = cmd.MarkFlagRequired("project")
+	cmd.Flags().StringVar(&projectID, "in", "", "Project to add people to (alias for --project)")
+
+	completer := completion.NewCompleter(nil)
+	_ = cmd.RegisterFlagCompletionFunc("project", completer.ProjectNameCompletion())
+	_ = cmd.RegisterFlagCompletionFunc("in", completer.ProjectNameCompletion())
 
 	return cmd
 }
@@ -468,12 +486,22 @@ func newPeopleRemoveCmd() *cobra.Command {
 			if len(args) == 0 {
 				return missingArg(cmd, "<person-id>...")
 			}
+			if projectID == "" {
+				projectID = appctx.FromContext(cmd.Context()).Flags.Project
+			}
+			if projectID == "" {
+				return output.ErrUsage("--project (or --in) is required")
+			}
 			return runPeopleRemove(cmd, args, projectID)
 		},
 	}
 
 	cmd.Flags().StringVarP(&projectID, "project", "p", "", "Project to remove people from (required)")
-	_ = cmd.MarkFlagRequired("project")
+	cmd.Flags().StringVar(&projectID, "in", "", "Project to remove people from (alias for --project)")
+
+	completer := completion.NewCompleter(nil)
+	_ = cmd.RegisterFlagCompletionFunc("project", completer.ProjectNameCompletion())
+	_ = cmd.RegisterFlagCompletionFunc("in", completer.ProjectNameCompletion())
 
 	return cmd
 }

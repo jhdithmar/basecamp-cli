@@ -184,6 +184,7 @@ func NewRootCmd() *cobra.Command {
 
 	// Context flags
 	cmd.PersistentFlags().StringVarP(&flags.Project, "project", "p", "", "Project ID or name")
+	cmd.PersistentFlags().StringVar(&flags.Project, "in", "", "Project ID or name (alias for --project)")
 	cmd.PersistentFlags().StringVarP(&flags.Account, "account", "a", "", "Account ID")
 	cmd.PersistentFlags().StringVar(&flags.Todolist, "todolist", "", "Todolist ID or name")
 	cmd.PersistentFlags().StringVarP(&flags.Profile, "profile", "P", "", "Named profile")
@@ -202,6 +203,7 @@ func NewRootCmd() *cobra.Command {
 	// DefaultCacheDirFunc checks --cache-dir flag, then app context, then env vars.
 	completer := completion.NewCompleter(nil)
 	_ = cmd.RegisterFlagCompletionFunc("project", completer.ProjectNameCompletion())
+	_ = cmd.RegisterFlagCompletionFunc("in", completer.ProjectNameCompletion())
 	_ = cmd.RegisterFlagCompletionFunc("account", completer.AccountCompletion())
 	_ = cmd.RegisterFlagCompletionFunc("profile", completer.ProfileCompletion())
 
