@@ -1,7 +1,10 @@
 package presenter
 
 import (
+	"encoding/json"
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -134,21 +137,40 @@ func formatPeople(val any) string {
 }
 
 // formatDock formats a project dock (array of tool maps) as a multi-line listing.
+// Items are sorted by their position field to match the order configured in the web UI.
 func formatDock(val any) string {
-	arr, ok := val.([]any)
-	if !ok || len(arr) == 0 {
+	// NormalizeData may produce []map[string]any or []any; accept both.
+	var items []map[string]any
+	switch v := val.(type) {
+	case []map[string]any:
+		items = v
+	case []any:
+		for _, item := range v {
+			if m, ok := item.(map[string]any); ok {
+				items = append(items, m)
+			}
+		}
+	}
+	if len(items) == 0 {
 		return ""
 	}
 
+	// Filter to enabled items only.
+	var enabled []map[string]any
+	for _, m := range items {
+		if e, ok := m["enabled"].(bool); ok && !e {
+			continue
+		}
+		enabled = append(enabled, m)
+	}
+
+	// Sort by position so the output matches the web UI order.
+	sort.SliceStable(enabled, func(i, j int) bool {
+		return dockPosition(enabled[i]) < dockPosition(enabled[j])
+	})
+
 	var lines []string
-	for _, item := range arr {
-		m, ok := item.(map[string]any)
-		if !ok {
-			continue
-		}
-		if enabled, ok := m["enabled"].(bool); ok && !enabled {
-			continue
-		}
+	for _, m := range enabled {
 		title, _ := m["title"].(string)
 		name, _ := m["name"].(string)
 		id := formatText(m["id"])
@@ -164,6 +186,22 @@ func formatDock(val any) string {
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+// dockPosition extracts the position from a dock item map.
+// Items without a position sort to the end (max int).
+func dockPosition(m map[string]any) int {
+	switch v := m["position"].(type) {
+	case float64:
+		return int(v)
+	case int:
+		return v
+	case json.Number:
+		if n, err := strconv.Atoi(v.String()); err == nil {
+			return n
+		}
+	}
+	return 1<<31 - 1
 }
 
 // formatPerson formats a single person object (map with "name" field).
