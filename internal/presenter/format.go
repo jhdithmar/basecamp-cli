@@ -1,7 +1,10 @@
 package presenter
 
 import (
+	"encoding/json"
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -134,36 +137,74 @@ func formatPeople(val any) string {
 }
 
 // formatDock formats a project dock (array of tool maps) as a multi-line listing.
+// Items are sorted by their position field to match the order configured in the web UI.
 func formatDock(val any) string {
-	arr, ok := val.([]any)
-	if !ok || len(arr) == 0 {
+	// NormalizeData may produce []map[string]any or []any; accept both.
+	var items []map[string]any
+	switch v := val.(type) {
+	case []map[string]any:
+		items = v
+	case []any:
+		for _, item := range v {
+			if m, ok := item.(map[string]any); ok {
+				items = append(items, m)
+			}
+		}
+	}
+	if len(items) == 0 {
 		return ""
 	}
 
+	// Sort by position so the output matches the web UI order.
+	// Enabled items (with positions) come first; disabled items sort to the end.
+	sort.SliceStable(items, func(i, j int) bool {
+		return dockPosition(items[i]) < dockPosition(items[j])
+	})
+
 	var lines []string
-	for _, item := range arr {
-		m, ok := item.(map[string]any)
-		if !ok {
-			continue
+	for _, m := range items {
+		disabled := false
+		if e, ok := m["enabled"].(bool); ok && !e {
+			disabled = true
 		}
-		if enabled, ok := m["enabled"].(bool); ok && !enabled {
-			continue
-		}
+
 		title, _ := m["title"].(string)
 		name, _ := m["name"].(string)
 		id := formatText(m["id"])
 		if title == "" {
 			title = name
 		}
+
+		var line string
 		if name != "" && id != "" {
-			lines = append(lines, fmt.Sprintf("%s (%s, ID: %s)", title, name, id))
+			line = fmt.Sprintf("%s (%s, ID: %s)", title, name, id)
 		} else if name != "" {
-			lines = append(lines, fmt.Sprintf("%s (%s)", title, name))
+			line = fmt.Sprintf("%s (%s)", title, name)
 		} else {
-			lines = append(lines, title)
+			line = title
 		}
+		if disabled {
+			line += " [disabled]"
+		}
+		lines = append(lines, line)
 	}
 	return strings.Join(lines, "\n")
+}
+
+// dockPosition extracts the position from a dock item map.
+// Items without a position sort to the end (max int).
+func dockPosition(m map[string]any) int {
+	switch v := m["position"].(type) {
+	case float64:
+		return int(v)
+	case int:
+		return v
+	case json.Number:
+		if n, err := strconv.Atoi(v.String()); err == nil {
+			return n
+		}
+	}
+	return 1<<31 - 1
 }
 
 // formatPerson formats a single person object (map with "name" field).
