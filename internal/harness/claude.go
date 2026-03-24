@@ -2,9 +2,12 @@ package harness
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/basecamp/basecamp-cli/internal/version"
 )
 
 func init() {
@@ -161,6 +164,114 @@ func CheckClaudeSkillLink() *StatusCheck {
 		Status:  "pass",
 		Message: "Linked",
 	}
+}
+
+// AutoUpdateHint is the user-facing instruction for enabling plugin auto-update.
+const AutoUpdateHint = "In Claude Code: /plugins → Marketplaces → 37signals → Enable auto-update"
+
+// CheckClaudePluginVersion compares the installed plugin version against the
+// running CLI version. Returns a warn check when they differ.
+func CheckClaudePluginVersion() *StatusCheck {
+	installed := InstalledPluginVersion()
+	if installed == "" {
+		// Can't determine version — don't nag.
+		return &StatusCheck{
+			Name:    "Claude Code Plugin Version",
+			Status:  "pass",
+			Message: "Version not tracked",
+		}
+	}
+
+	cliVersion := version.Version
+	if cliVersion == "dev" {
+		return &StatusCheck{
+			Name:    "Claude Code Plugin Version",
+			Status:  "pass",
+			Message: fmt.Sprintf("Installed (%s, dev build)", installed),
+		}
+	}
+
+	if installed == cliVersion {
+		return &StatusCheck{
+			Name:    "Claude Code Plugin Version",
+			Status:  "pass",
+			Message: fmt.Sprintf("Up to date (%s)", installed),
+		}
+	}
+
+	return &StatusCheck{
+		Name:    "Claude Code Plugin Version",
+		Status:  "warn",
+		Message: fmt.Sprintf("Mismatched (plugin %s, CLI %s)", installed, cliVersion),
+		Hint:    AutoUpdateHint,
+	}
+}
+
+// InstalledPluginVersion reads the installed plugin version from
+// ~/.claude/plugins/installed_plugins.json. Returns "" if unreadable.
+func InstalledPluginVersion() string {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return ""
+	}
+	data, err := os.ReadFile(filepath.Join(filepath.Clean(home), ".claude", "plugins", "installed_plugins.json")) //nolint:gosec // G304: trusted path
+	if err != nil {
+		return ""
+	}
+	return installedPluginVersion(data)
+}
+
+// installedPluginVersion extracts the version of the basecamp plugin from
+// the installed_plugins.json data. Handles v2, v1 flat map, and array formats.
+func installedPluginVersion(data []byte) string {
+	// v2 format: {"version": 2, "plugins": {"basecamp@37signals": [{"version": "1.0.0", ...}]}}
+	var pluginMap map[string]any
+	if err := json.Unmarshal(data, &pluginMap); err == nil {
+		if inner, ok := pluginMap["plugins"]; ok {
+			if innerMap, ok := inner.(map[string]any); ok {
+				for key, val := range innerMap {
+					if !matchesPluginKey(key) {
+						continue
+					}
+					if arr, ok := val.([]any); ok {
+						for _, entry := range arr {
+							if obj, ok := entry.(map[string]any); ok {
+								if v, ok := obj["version"].(string); ok {
+									return v
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// v1 flat map: {"basecamp@37signals": {"version": "1.0.0"}}
+		for key, val := range pluginMap {
+			if !matchesPluginKey(key) {
+				continue
+			}
+			if obj, ok := val.(map[string]any); ok {
+				if v, ok := obj["version"].(string); ok {
+					return v
+				}
+			}
+		}
+	}
+
+	// Array format: [{"name": "basecamp@37signals", "version": "1.0.0", ...}]
+	var plugins []map[string]any
+	if err := json.Unmarshal(data, &plugins); err == nil {
+		for _, p := range plugins {
+			if matchesBasecamp(p) {
+				if v, ok := p["version"].(string); ok {
+					return v
+				}
+			}
+		}
+	}
+
+	return ""
 }
 
 // pluginInstalled checks if "basecamp" appears as an installed plugin.
