@@ -245,20 +245,36 @@ func MarkdownToHTML(md string) string {
 			continue
 		}
 
-		// Not a list item, flush any pending list
-		flushList()
-
-		// Empty line — flush accumulated paragraph and record that we need
-		// paragraph spacing before the next block.  Basecamp's Trix editor
-		// does not render margins on <p> tags, so an explicit <br> is
-		// required to produce visible separation between blocks.
+		// Empty line - handle differently based on context
 		if strings.TrimSpace(line) == "" {
+			if inList {
+				// In a list: empty lines between items create spacing but don't break the list
+				// We'll track this for later when we render the list
+				continue
+			}
+			// Not in a list: flush paragraph and record break
 			flushParagraph()
 			if result.Len() > 0 {
 				pendingBreak = true
 			}
 			continue
 		}
+
+		// Check for list continuation lines (indented text that continues previous list item)
+		if inList && len(listItems) > 0 {
+			// Check if line is indented (starts with spaces or tabs)
+			if strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t") {
+				// This is a continuation of the last list item
+				trimmedLine := strings.TrimSpace(line)
+				// Append to last list item with <br> separator
+				lastItemIndex := len(listItems) - 1
+				listItems[lastItemIndex] = listItems[lastItemIndex] + "<br>\n" + convertInline(trimmedLine)
+				continue
+			}
+		}
+
+		// Not a list item or continuation, flush any pending list
+		flushList()
 
 		// Headings
 		if strings.HasPrefix(line, "#") {

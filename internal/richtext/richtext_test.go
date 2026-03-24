@@ -73,6 +73,16 @@ func TestMarkdownToHTML(t *testing.T) {
 			expected: "<ol>\n<li>First</li>\n<li>Second</li>\n<li>Third</li>\n</ol>",
 		},
 		{
+			name:     "ordered list with multi-line items and blank lines",
+			input:    "1. First item\n   Description here\n\n2. Second item\n   Another description",
+			expected: "<ol>\n<li>First item<br>\nDescription here</li>\n<li>Second item<br>\nAnother description</li>\n</ol>",
+		},
+		{
+			name:     "ordered list with trailing spaces and descriptions",
+			input:    "1. **Item** - [Link](url) (time)  \n   Description here\n\n2. **Next** - [Link](url)",
+			expected: "<ol>\n<li><strong>Item</strong> - <a href=\"url\">Link</a> (time)  <br>\nDescription here</li>\n<li><strong>Next</strong> - <a href=\"url\">Link</a></li>\n</ol>",
+		},
+		{
 			name:     "blockquote",
 			input:    "> This is a quote",
 			expected: "<blockquote>This is a quote</blockquote>",
