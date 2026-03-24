@@ -229,6 +229,7 @@ func MarkdownToHTML(md string) string {
 				inList = true
 				listType = "ul"
 			}
+			pendingBreak = false // blank was between items, not after the list
 			listItems = append(listItems, convertInline(ulMatch[2]))
 			continue
 		}
@@ -241,6 +242,7 @@ func MarkdownToHTML(md string) string {
 				inList = true
 				listType = "ol"
 			}
+			pendingBreak = false // blank was between items, not after the list
 			listItems = append(listItems, convertInline(olMatch[2]))
 			continue
 		}
@@ -248,8 +250,9 @@ func MarkdownToHTML(md string) string {
 		// Empty line - handle differently based on context
 		if strings.TrimSpace(line) == "" {
 			if inList {
-				// In a list: empty lines between items create spacing but don't break the list
-				// We'll track this for later when we render the list
+				// In a list: empty lines between items create spacing but don't break the list.
+				// Record pending break so content after the list gets proper separation.
+				pendingBreak = true
 				continue
 			}
 			// Not in a list: flush paragraph and record break
@@ -269,6 +272,7 @@ func MarkdownToHTML(md string) string {
 				// Append to last list item with <br> separator
 				lastItemIndex := len(listItems) - 1
 				listItems[lastItemIndex] = listItems[lastItemIndex] + "<br>\n" + convertInline(trimmedLine)
+				pendingBreak = false // blank was before continuation, not after the list
 				continue
 			}
 		}
