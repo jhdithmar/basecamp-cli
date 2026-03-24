@@ -81,6 +81,11 @@ Full CLI coverage: 130 endpoints across todos, cards, messages, files, schedule,
    - **`[@Name](person:ID)`** — one API call, resolves person ID to SGID via pingable set
    - **`@sgid:VALUE`** — inline SGID embed for pipeline composability
    - **`@Name` / `@First.Last`** — fuzzy name resolution (may be ambiguous)
+   
+   **Image support:** Most content types support inline images via the `--attach` flag:
+   - **Todos, cards, messages, comments, documents** — use `--attach <file>` to embed images that display inline
+   - Inline images in descriptions work when attached via `--attach`, not when referenced by URL
+   
    For todos, documents, and cards, content is sent as-is — use plain text or HTML directly.
 6. **Project scope is mandatory for most commands** — via `--in <project>` or `.basecamp/config.json`. Cross-project exceptions: `basecamp reports assigned` for assigned work, `basecamp reports overdue` for overdue todos, `basecamp reports schedule` for upcoming schedule across all projects, `basecamp recordings <type>` for browsing by type.
 
@@ -439,7 +444,32 @@ basecamp comment <recording_id> "@Jane.Smith, looks good!" --in <project>  # Wit
 basecamp comments update <id> "Updated" --in <project>
 ```
 
+**Attaching files to comments:** Use `--attach <file>` to include images or files. The file is uploaded as an attachment to the comment (not listed in Files section).
+```bash
+basecamp comment 123 "Here's the image!" --attach ./photo.jpg --in <project>
+```
+
 ### Files & Documents
+
+**Files uploaded via `files uploads create` vs content attachments:**
+- `files uploads create` - Uploads to the project's Files section (permanent, browsable)
+- `todo --attach`, `card --attach`, `message --attach`, `comment --attach`, `doc --attach` - Attaches directly to content (not in Files section, only visible with that item)
+
+```bash
+# Upload to Files section
+basecamp files uploads create <file> --in <project> --json
+
+# Attach to todos, cards, messages, comments, or documents
+basecamp todo "Task" --attach ./file.pdf --in <project>
+basecamp card "Title" --attach ./image.jpg --in <project>
+basecamp message "Update" --attach ./doc.pdf --in <project>
+basecamp comment 123 "Here's the file" --attach <file> --in <project>
+```
+
+**Image sources for scripting:** The Unsplash Source API is deprecated. Use `picsum.photos` instead:
+```bash
+curl -sL "https://picsum.photos/800/600?random=1" -o image.jpg
+```
 
 ```bash
 basecamp files list --in <project> --json               # List all (folders, files, docs)
@@ -471,7 +501,9 @@ basecamp schedule show <id> --date 20240315       # Specific occurrence (recurri
 basecamp schedule create "Event" --starts-at "2024-03-15T09:00:00Z" --ends-at "2024-03-15T10:00:00Z" --in <project>
 basecamp schedule create "Meeting" --all-day --notify --participants 1,2,3 --in <project>
 basecamp schedule create "Sync" --starts-at "..." --ends-at "..." --no-subscribe --in <project>
+basecamp schedule create "Meeting with Attachment" --starts-at "..." --ends-at "..." --attach ./agenda.pdf --in <project>
 basecamp schedule update <id> --summary "New title" --starts-at "..."
+basecamp schedule update <id> --description "Updated with file" --attach ./updated.pdf --in <project>
 basecamp schedule settings --include-due --in <project>  # Include todos/cards due dates
 ```
 
@@ -589,6 +621,8 @@ basecamp chat --in <project> --json           # List chats
 basecamp chat messages --in <project> --json  # List messages
 basecamp chat post "Hello!" --in <project>
 basecamp chat post "@Jane.Smith, check this" --in <project>  # With @mention (auto text/html)
+basecamp chat post "Here's the file" --attach ./document.pdf --in <project>  # With attachment
+basecamp chat post "Screenshot" --attach ./image.png --in <project>  # Image attachment
 basecamp chat line <line_id> --in <project>   # Show line
 basecamp chat delete <line_id> --in <project> --force # Delete line (permanent, not trashable)
 ```

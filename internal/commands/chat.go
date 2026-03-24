@@ -287,6 +287,7 @@ func runChatMessages(cmd *cobra.Command, app *appctx.App, chatID, project string
 
 func newChatPostCmd(project, chatID, contentType *string) *cobra.Command {
 	var content string
+	var attachFiles []string
 
 	cmd := &cobra.Command{
 		Use:   "post <message>",
@@ -317,17 +318,18 @@ content type is promoted to text/html when mentions are present.`,
 				return err
 			}
 
-			return runChatPost(cmd, app, *chatID, *project, messageContent, *contentType)
+			return runChatPost(cmd, app, *chatID, *project, messageContent, *contentType, attachFiles)
 		},
 	}
 
 	cmd.Flags().StringVar(&content, "content", "", "Message content")
 	cmd.Flags().StringVar(contentType, "content-type", "", "Content type (text/html for rich text)")
+	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "Attach file (repeatable)")
 
 	return cmd
 }
 
-func runChatPost(cmd *cobra.Command, app *appctx.App, chatID, project, content, contentType string) error {
+func runChatPost(cmd *cobra.Command, app *appctx.App, chatID, project, content, contentType string, attachFiles []string) error {
 	// Resolve project only when needed (chat ID not provided, or for breadcrumbs)
 	var resolvedProjectID string
 	if chatID == "" {
@@ -385,16 +387,54 @@ func runChatPost(cmd *cobra.Command, app *appctx.App, chatID, project, content, 
 	}
 
 	// Post message using SDK
-	var opts *basecamp.CreateLineOptions
-	if contentType != "" {
-		opts = &basecamp.CreateLineOptions{ContentType: contentType}
-	}
-	line, err := app.Account().Campfires().CreateLine(cmd.Context(), chatIDInt, content, opts)
-	if err != nil {
-		return err
+	var lineID int64
+	var uploadIDs []int64
+
+	// Post text message if there's content
+	if content != "" {
+		var opts *basecamp.CreateLineOptions
+		if contentType != "" {
+			opts = &basecamp.CreateLineOptions{ContentType: contentType}
+		}
+		line, err := app.Account().Campfires().CreateLine(cmd.Context(), chatIDInt, content, opts)
+		if err != nil {
+			return err
+		}
+		lineID = line.ID
 	}
 
-	summary := fmt.Sprintf("Posted message #%d", line.ID)
+	// Upload attachments using CreateUpload
+	for _, filePath := range attachFiles {
+		normalized := richtext.NormalizeDragPath(filePath)
+		if err := richtext.ValidateFile(normalized); err != nil {
+			return fmt.Errorf("%s: %w", filePath, err)
+		}
+
+		contentType := richtext.DetectMIME(normalized)
+		filename := filepath.Base(normalized)
+
+		f, err := os.Open(normalized)
+		if err != nil {
+			return fmt.Errorf("%s: %w", filePath, err)
+		}
+
+		uploadLine, err := app.Account().Campfires().CreateUpload(cmd.Context(), chatIDInt, filename, contentType, f)
+		f.Close()
+		if err != nil {
+			return fmt.Errorf("failed to upload %s: %w", filePath, err)
+		}
+		uploadIDs = append(uploadIDs, uploadLine.ID)
+	}
+
+	// Build summary
+	var summary string
+	if lineID != 0 && len(uploadIDs) > 0 {
+		summary = fmt.Sprintf("Posted message #%d with %d attachment(s)", lineID, len(uploadIDs))
+	} else if lineID != 0 {
+		summary = fmt.Sprintf("Posted message #%d", lineID)
+	} else if len(uploadIDs) > 0 {
+		summary = fmt.Sprintf("Posted %d attachment(s)", len(uploadIDs))
+	}
 
 	// Build breadcrumbs — include project context if resolved
 	var breadcrumbs []output.Breadcrumb
@@ -434,7 +474,13 @@ func runChatPost(cmd *cobra.Command, app *appctx.App, chatID, project, content, 
 	if mentionNotice != "" {
 		respOpts = append(respOpts, output.WithDiagnostic(mentionNotice))
 	}
-	return app.OK(line, respOpts...)
+
+	// Return result with all created IDs
+	result := map[string]interface{}{
+		"message_id": lineID,
+		"upload_ids": uploadIDs,
+	}
+	return app.OK(result, respOpts...)
 }
 
 func newChatUploadCmd(project, chatID *string) *cobra.Command {

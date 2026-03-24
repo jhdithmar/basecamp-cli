@@ -328,6 +328,7 @@ func resolveAssigneeID(ctx context.Context, app *appctx.App, input string) (int6
 func newCardsCreateCmd(project, cardTable *string) *cobra.Command {
 	var column string
 	var assignee string
+	var attachFiles []string
 
 	cmd := &cobra.Command{
 		Use:   "create <title> [body]",
@@ -452,6 +453,15 @@ func newCardsCreateCmd(project, cardTable *string) *cobra.Command {
 				mentionNotice = unresolvedMentionWarning(mentionResult.Unresolved)
 			}
 
+			// Upload explicit --attach files and embed
+			if len(attachFiles) > 0 {
+				refs, attachErr := uploadAttachments(cmd, app, attachFiles)
+				if attachErr != nil {
+					return attachErr
+				}
+				content = richtext.EmbedAttachments(content, refs)
+			}
+
 			// Build request
 			req := &basecamp.CreateCardRequest{
 				Title:   title,
@@ -521,6 +531,7 @@ func newCardsCreateCmd(project, cardTable *string) *cobra.Command {
 	cmd.Flags().StringVarP(&column, "column", "c", "", "Column ID or name (defaults to first column)")
 	cmd.Flags().StringVar(&assignee, "assignee", "", "Assignee ID or name")
 	cmd.Flags().StringVar(&assignee, "to", "", "Assignee (alias for --assignee)")
+	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "Attach file (repeatable)")
 
 	completer := completion.NewCompleter(nil)
 	_ = cmd.RegisterFlagCompletionFunc("assignee", completer.PeopleNameCompletion())
@@ -534,6 +545,7 @@ func newCardsUpdateCmd() *cobra.Command {
 	var content string
 	var due string
 	var assignee string
+	var attachFiles []string
 
 	cmd := &cobra.Command{
 		Use:   "update <id|url>",
@@ -545,7 +557,7 @@ You can pass either a card ID or a Basecamp URL:
   basecamp cards update 789 --body "new body"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if strings.TrimSpace(title) == "" && strings.TrimSpace(content) == "" && due == "" && !cmd.Flags().Changed("assignee") {
+			if strings.TrimSpace(title) == "" && strings.TrimSpace(content) == "" && due == "" && !cmd.Flags().Changed("assignee") && len(attachFiles) == 0 {
 				return noChanges(cmd)
 			}
 
@@ -568,8 +580,9 @@ You can pass either a card ID or a Basecamp URL:
 				req.Title = title
 			}
 			var mentionNotice string
+			var html string
 			if content != "" {
-				html := richtext.MarkdownToHTML(content)
+				html = richtext.MarkdownToHTML(content)
 				html, err = resolveLocalImages(cmd, app, html)
 				if err != nil {
 					return err
@@ -578,8 +591,21 @@ You can pass either a card ID or a Basecamp URL:
 				if mentionErr != nil {
 					return mentionErr
 				}
-				req.Content = mentionResult.HTML
+				html = mentionResult.HTML
 				mentionNotice = unresolvedMentionWarning(mentionResult.Unresolved)
+			}
+
+			// Upload explicit --attach files and embed
+			if len(attachFiles) > 0 {
+				refs, attachErr := uploadAttachments(cmd, app, attachFiles)
+				if attachErr != nil {
+					return attachErr
+				}
+				html = richtext.EmbedAttachments(html, refs)
+			}
+
+			if html != "" {
+				req.Content = html
 			}
 			if due != "" {
 				req.DueOn = dateparse.Parse(due)
@@ -618,6 +644,7 @@ You can pass either a card ID or a Basecamp URL:
 	cmd.Flags().StringVarP(&content, "body", "b", "", "New body content")
 	cmd.Flags().StringVarP(&due, "due", "d", "", "Due date (natural language or YYYY-MM-DD)")
 	cmd.Flags().StringVar(&assignee, "assignee", "", "Assignee ID or name")
+	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "Attach file (repeatable)")
 
 	// Register tab completion for assignee flag
 	completer := completion.NewCompleter(nil)
@@ -966,6 +993,7 @@ func NewCardCmd() *cobra.Command {
 	var column string
 	var cardTable string
 	var assignee string
+	var attachFiles []string
 
 	cmd := &cobra.Command{
 		Use:   "card <title> [body]",
@@ -1091,6 +1119,15 @@ func NewCardCmd() *cobra.Command {
 				mentionNotice = unresolvedMentionWarning(mentionResult.Unresolved)
 			}
 
+			// Upload explicit --attach files and embed
+			if len(attachFiles) > 0 {
+				refs, attachErr := uploadAttachments(cmd, app, attachFiles)
+				if attachErr != nil {
+					return attachErr
+				}
+				content = richtext.EmbedAttachments(content, refs)
+			}
+
 			// Build request
 			req := &basecamp.CreateCardRequest{
 				Title:   title,
@@ -1162,6 +1199,7 @@ func NewCardCmd() *cobra.Command {
 	cmd.Flags().StringVar(&assignee, "assignee", "", "Assignee ID or name")
 	cmd.Flags().StringVar(&assignee, "to", "", "Assignee (alias for --assignee)")
 	cmd.PersistentFlags().StringVar(&cardTable, "card-table", "", "Card table ID (required if project has multiple)")
+	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "Attach file (repeatable)")
 
 	cardCompleter := completion.NewCompleter(nil)
 	_ = cmd.RegisterFlagCompletionFunc("assignee", cardCompleter.PeopleNameCompletion())

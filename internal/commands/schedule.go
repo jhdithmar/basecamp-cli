@@ -393,6 +393,7 @@ func newScheduleCreateCmd(project, scheduleID *string) *cobra.Command {
 	var participants string
 	var subscribe string
 	var noSubscribe bool
+	var attachFiles []string
 
 	cmd := &cobra.Command{
 		Use:   "create <summary>",
@@ -422,7 +423,7 @@ func newScheduleCreateCmd(project, scheduleID *string) *cobra.Command {
 				return output.ErrUsage("--ends-at required (ISO 8601 datetime)")
 			}
 
-			return runScheduleCreate(cmd, app, *project, *scheduleID, entrySummary, startsAt, endsAt, description, allDay, notify, participants, subscribe, noSubscribe)
+			return runScheduleCreate(cmd, app, *project, *scheduleID, entrySummary, startsAt, endsAt, description, allDay, notify, participants, subscribe, noSubscribe, attachFiles)
 		},
 	}
 
@@ -440,11 +441,12 @@ func newScheduleCreateCmd(project, scheduleID *string) *cobra.Command {
 	cmd.Flags().StringVar(&participants, "people", "", "Person IDs (alias)")
 	cmd.Flags().StringVar(&subscribe, "subscribe", "", "Subscribe specific people (comma-separated names, emails, IDs, or \"me\")")
 	cmd.Flags().BoolVar(&noSubscribe, "no-subscribe", false, "Don't subscribe anyone else (silent, no notifications)")
+	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "Attach file (repeatable)")
 
 	return cmd
 }
 
-func runScheduleCreate(cmd *cobra.Command, app *appctx.App, project, scheduleID, summary, startsAt, endsAt, description string, allDay, notify bool, participants, subscribe string, noSubscribe bool) error {
+func runScheduleCreate(cmd *cobra.Command, app *appctx.App, project, scheduleID, summary, startsAt, endsAt, description string, allDay, notify bool, participants, subscribe string, noSubscribe bool, attachFiles []string) error {
 	// Resolve subscription flags early (fail fast on bad input)
 	subs, err := applySubscribeFlags(cmd.Context(), app.Names, subscribe, cmd.Flags().Changed("subscribe"), noSubscribe)
 	if err != nil {
@@ -495,6 +497,15 @@ func runScheduleCreate(cmd *cobra.Command, app *appctx.App, project, scheduleID,
 		}
 		description = mentionResult.HTML
 		mentionNotice = unresolvedMentionWarning(mentionResult.Unresolved)
+	}
+
+	// Upload explicit --attach files and embed
+	if len(attachFiles) > 0 {
+		refs, attachErr := uploadAttachments(cmd, app, attachFiles)
+		if attachErr != nil {
+			return attachErr
+		}
+		description = richtext.EmbedAttachments(description, refs)
 	}
 
 	// Build request
@@ -557,6 +568,7 @@ func newScheduleUpdateCmd(project *string) *cobra.Command {
 	var allDay bool
 	var notify bool
 	var participants string
+	var attachFiles []string
 
 	cmd := &cobra.Command{
 		Use:   "update <id|url>",
@@ -628,8 +640,20 @@ You can pass either an entry ID or a Basecamp URL:
 				if mentionErr != nil {
 					return mentionErr
 				}
-				req.Description = mentionResult.HTML
+				html = mentionResult.HTML
 				mentionNotice = unresolvedMentionWarning(mentionResult.Unresolved)
+
+				// Upload explicit --attach files and embed
+				if len(attachFiles) > 0 {
+					refs, attachErr := uploadAttachments(cmd, app, attachFiles)
+					if attachErr != nil {
+						return attachErr
+					}
+					html = richtext.EmbedAttachments(html, refs)
+					hasChanges = true
+				}
+
+				req.Description = html
 				hasChanges = true
 			}
 			if cmd.Flags().Changed("all-day") {
@@ -652,6 +676,16 @@ You can pass either an entry ID or a Basecamp URL:
 					req.ParticipantIDs = ids
 					hasChanges = true
 				}
+			}
+
+			// Handle attachments-only updates (no description text provided)
+			if !hasChanges && len(attachFiles) > 0 {
+				refs, attachErr := uploadAttachments(cmd, app, attachFiles)
+				if attachErr != nil {
+					return attachErr
+				}
+				req.Description = richtext.EmbedAttachments("", refs)
+				hasChanges = true
 			}
 
 			if !hasChanges {
@@ -694,6 +728,7 @@ You can pass either an entry ID or a Basecamp URL:
 	cmd.Flags().BoolVar(&notify, "notify", false, "Notify participants")
 	cmd.Flags().StringVar(&participants, "participants", "", "Comma-separated person IDs")
 	cmd.Flags().StringVar(&participants, "people", "", "Person IDs (alias)")
+	cmd.Flags().StringArrayVar(&attachFiles, "attach", nil, "Attach file (repeatable)")
 
 	return cmd
 }
