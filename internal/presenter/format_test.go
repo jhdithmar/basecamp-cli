@@ -12,7 +12,7 @@ func TestFormatDock(t *testing.T) {
 	}
 
 	got := formatDock(dock)
-	want := "To-dos (todoset, ID: 1)\nMessage Board (message_board, ID: 2)"
+	want := "1  To-dos (todoset)\n2  Message Board (message_board)"
 	if got != want {
 		t.Errorf("formatDock(enabled items) = %q, want %q", got, want)
 	}
@@ -25,7 +25,7 @@ func TestFormatDockAnnotatesDisabled(t *testing.T) {
 	}
 
 	got := formatDock(dock)
-	want := "To-dos (todoset, ID: 1)\nDocs & Files (vault, ID: 3) [disabled]"
+	want := "1  To-dos (todoset)\n3  Docs & Files (vault) [disabled]"
 	if got != want {
 		t.Errorf("formatDock(with disabled) = %q, want %q", got, want)
 	}
@@ -38,7 +38,7 @@ func TestFormatDockDefaultsEnabledWhenAbsent(t *testing.T) {
 	}
 
 	got := formatDock(dock)
-	want := "To-dos (todoset, ID: 1)\nSchedule (schedule, ID: 2)"
+	want := "1  To-dos (todoset)\n2  Schedule (schedule)"
 	if got != want {
 		t.Errorf("formatDock(no enabled field) = %q, want %q", got, want)
 	}
@@ -52,7 +52,7 @@ func TestFormatDockSortsByPosition(t *testing.T) {
 	}
 
 	got := formatDock(dock)
-	want := "To-dos (todoset, ID: 1)\nMessage Board (message_board, ID: 2)\nDocs & Files (vault, ID: 3)"
+	want := "1  To-dos (todoset)\n2  Message Board (message_board)\n3  Docs & Files (vault)"
 	if got != want {
 		t.Errorf("formatDock(position sort) = %q, want %q", got, want)
 	}
@@ -65,7 +65,7 @@ func TestFormatDockItemsWithoutPositionSortLast(t *testing.T) {
 	}
 
 	got := formatDock(dock)
-	want := "To-dos (todoset, ID: 1)\nDocs & Files (vault, ID: 3)"
+	want := "1  To-dos (todoset)\n3  Docs & Files (vault)"
 	if got != want {
 		t.Errorf("formatDock(missing position) = %q, want %q", got, want)
 	}
@@ -80,7 +80,7 @@ func TestFormatDockAcceptsMapSlice(t *testing.T) {
 	}
 
 	got := formatDock(dock)
-	want := "To-dos (todoset, ID: 1)\nMessage Board (message_board, ID: 2)\nDocs & Files (vault, ID: 3)"
+	want := "1  To-dos (todoset)\n2  Message Board (message_board)\n3  Docs & Files (vault)"
 	if got != want {
 		t.Errorf("formatDock([]map with json.Number) = %q, want %q", got, want)
 	}
@@ -94,7 +94,7 @@ func TestFormatDockDisabledSortAfterEnabled(t *testing.T) {
 	}
 
 	got := formatDock(dock)
-	want := "Message Board (message_board, ID: 2)\nTo-dos (todoset, ID: 1)\nSchedule (schedule, ID: 3) [disabled]"
+	want := "2  Message Board (message_board)\n1  To-dos (todoset)\n3  Schedule (schedule) [disabled]"
 	if got != want {
 		t.Errorf("formatDock(disabled sort last) = %q, want %q", got, want)
 	}
@@ -106,5 +106,30 @@ func TestFormatDockEmpty(t *testing.T) {
 	}
 	if got := formatDock(nil); got != "" {
 		t.Errorf("formatDock(nil) = %q, want empty", got)
+	}
+}
+
+func TestFormatDockRightAlignsIDs(t *testing.T) {
+	dock := []any{
+		map[string]any{"name": "todoset", "title": "To-dos", "enabled": true, "id": float64(1)},
+		map[string]any{"name": "vault", "title": "Docs & Files", "enabled": true, "id": float64(100)},
+	}
+
+	got := formatDock(dock)
+	want := "  1  To-dos (todoset)\n100  Docs & Files (vault)"
+	if got != want {
+		t.Errorf("formatDock(right-aligned IDs) = %q, want %q", got, want)
+	}
+}
+
+func TestFormatDockTitleFallsBackToName(t *testing.T) {
+	dock := []any{
+		map[string]any{"name": "todoset", "enabled": true, "id": float64(1)},
+	}
+
+	got := formatDock(dock)
+	want := "1  todoset"
+	if got != want {
+		t.Errorf("formatDock(title fallback) = %q, want %q", got, want)
 	}
 }

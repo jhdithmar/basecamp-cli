@@ -136,10 +136,16 @@ func formatPeople(val any) string {
 	return strings.Join(names, ", ")
 }
 
-// formatDock formats a project dock (array of tool maps) as a multi-line listing.
-// Items are sorted by their position field to match the order configured in the web UI.
-func formatDock(val any) string {
-	// NormalizeData may produce []map[string]any or []any; accept both.
+// dockItem holds parsed dock tool data for rendering.
+type dockItem struct {
+	id       string
+	title    string
+	name     string
+	disabled bool
+}
+
+// parseDockItems extracts and sorts dock items from the raw value.
+func parseDockItems(val any) []dockItem {
 	var items []map[string]any
 	switch v := val.(type) {
 	case []map[string]any:
@@ -152,38 +158,84 @@ func formatDock(val any) string {
 		}
 	}
 	if len(items) == 0 {
-		return ""
+		return nil
 	}
 
-	// Sort by position so the output matches the web UI order.
-	// Enabled items (with positions) come first; disabled items sort to the end.
 	sort.SliceStable(items, func(i, j int) bool {
 		return dockPosition(items[i]) < dockPosition(items[j])
 	})
 
-	var lines []string
-	for _, m := range items {
+	result := make([]dockItem, len(items))
+	for i, m := range items {
+		title, _ := m["title"].(string)
+		name, _ := m["name"].(string)
+		if title == "" {
+			title = name
+		}
 		disabled := false
 		if e, ok := m["enabled"].(bool); ok && !e {
 			disabled = true
 		}
-
-		title, _ := m["title"].(string)
-		name, _ := m["name"].(string)
-		id := formatText(m["id"])
-		if title == "" {
-			title = name
+		result[i] = dockItem{
+			id:       formatText(m["id"]),
+			title:    title,
+			name:     name,
+			disabled: disabled,
 		}
+	}
+	return result
+}
 
-		var line string
-		if name != "" && id != "" {
-			line = fmt.Sprintf("%s (%s, ID: %s)", title, name, id)
-		} else if name != "" {
-			line = fmt.Sprintf("%s (%s)", title, name)
-		} else {
-			line = title
+// formatDock formats a project dock (array of tool maps) as a multi-line listing.
+// Items are sorted by their position field to match the order configured in the web UI.
+func formatDock(val any) string {
+	items := parseDockItems(val)
+	if len(items) == 0 {
+		return ""
+	}
+
+	maxIDWidth := 0
+	for _, item := range items {
+		if len(item.id) > maxIDWidth {
+			maxIDWidth = len(item.id)
 		}
-		if disabled {
+	}
+
+	var lines []string
+	for _, item := range items {
+		line := fmt.Sprintf("%*s  %s", maxIDWidth, item.id, item.title)
+		if item.name != "" && item.name != item.title {
+			line += fmt.Sprintf(" (%s)", item.name)
+		}
+		if item.disabled {
+			line += " [disabled]"
+		}
+		lines = append(lines, line)
+	}
+	return strings.Join(lines, "\n")
+}
+
+// formatDockStyled formats a dock with the title rendered in the primary style.
+func formatDockStyled(val any, styles Styles) string {
+	items := parseDockItems(val)
+	if len(items) == 0 {
+		return ""
+	}
+
+	maxIDWidth := 0
+	for _, item := range items {
+		if len(item.id) > maxIDWidth {
+			maxIDWidth = len(item.id)
+		}
+	}
+
+	var lines []string
+	for _, item := range items {
+		line := fmt.Sprintf("%*s  %s", maxIDWidth, item.id, styles.Primary.Render(item.title))
+		if item.name != "" && item.name != item.title {
+			line += fmt.Sprintf(" (%s)", item.name)
+		}
+		if item.disabled {
 			line += " [disabled]"
 		}
 		lines = append(lines, line)

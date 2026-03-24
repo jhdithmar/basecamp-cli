@@ -209,6 +209,21 @@ func renderDetailSection(b *strings.Builder, schema *EntitySchema, section Detai
 		}
 
 		if spec.Role == "body" {
+			// Dock format produces pre-styled output with mixed emphasis;
+			// write lines directly without wrapping in the body style.
+			if spec.Format == "dock" && styles.Styled {
+				styled := formatDockStyled(val, styles)
+				for _, line := range strings.Split(strings.TrimRight(styled, "\n"), "\n") {
+					if line == "" {
+						b.WriteString("\n")
+					} else {
+						b.WriteString(line)
+						b.WriteString("\n")
+					}
+				}
+				continue
+			}
+
 			// Render each line individually to prevent lipgloss from
 			// padding blank lines to the width of the longest line.
 			for _, line := range strings.Split(strings.TrimRight(formatted, "\n"), "\n") {
@@ -270,12 +285,24 @@ func renderAllFields(b *strings.Builder, schema *EntitySchema, data map[string]a
 
 			if spec.Role == "body" {
 				b.WriteString("\n")
-				for _, line := range strings.Split(strings.TrimRight(formatted, "\n"), "\n") {
-					if line == "" {
-						b.WriteString("\n")
-					} else {
-						b.WriteString(style.Render(line))
-						b.WriteString("\n")
+				if spec.Format == "dock" && styles.Styled {
+					styled := formatDockStyled(val, styles)
+					for _, line := range strings.Split(strings.TrimRight(styled, "\n"), "\n") {
+						if line == "" {
+							b.WriteString("\n")
+						} else {
+							b.WriteString(line)
+							b.WriteString("\n")
+						}
+					}
+				} else {
+					for _, line := range strings.Split(strings.TrimRight(formatted, "\n"), "\n") {
+						if line == "" {
+							b.WriteString("\n")
+						} else {
+							b.WriteString(style.Render(line))
+							b.WriteString("\n")
+						}
 					}
 				}
 			} else {
