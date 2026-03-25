@@ -5,6 +5,7 @@
 - Works standalone or with any AI agent (Claude, Codex, Copilot, Gemini)
 - JSON output with breadcrumbs for easy navigation
 - OAuth authentication with automatic token refresh
+- Includes agent skill and Claude plugin
 
 ## Quick Start
 
