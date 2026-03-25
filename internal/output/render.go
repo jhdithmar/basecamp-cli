@@ -536,7 +536,7 @@ func (r *Renderer) selectColumns(cols []column, data []map[string]any) []column 
 		// Cap width at 40 for long content. URL columns keep actual
 		// width so column-dropping math matches what formatCell (which
 		// never truncates URLs) actually renders.
-		if cols[i].width > 40 && !cols[i].containsURL {
+		if cols[i].width > 40 && !cols[i].containsURL { //nolint:gosec // G602 false positive: i bounded by range cols
 			cols[i].width = 40
 		}
 	}
