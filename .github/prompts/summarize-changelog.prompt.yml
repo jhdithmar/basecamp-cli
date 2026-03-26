@@ -6,12 +6,16 @@ messages:
       (the detailed per-PR list is generated separately below your summary).
 
       Format:
+      - If the release has NO user-facing changes (only CI, infra, dependency bumps,
+        internal refactors, or workflow fixes), output NOTHING — literally empty.
+        The per-PR list below your summary is sufficient for those releases.
       - If there are breaking changes, start with a ⚠️ line describing what broke.
       - Then one short sentence setting the tone (e.g. "Big one!" or "Patch release with two fixes.").
       - Then a bullet list of highlights. Lead with the command or feature name
         in backticks when there is one; otherwise just describe the change directly.
       - 1–3 bullets for small releases (1–5 commits). 4–10 for larger ones.
       - Do NOT pad small releases with filler bullets. Fewer is better.
+      - Only mention changes that matter to someone USING the CLI.
 
       Style:
       - Imperative voice: "Add", "Fix", not "Added", "Fixed"
