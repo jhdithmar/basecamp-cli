@@ -67,6 +67,15 @@ if grep -q '^[[:space:]]*replace[[:space:]]' go.mod; then
   die "go.mod contains replace directives. Remove them before releasing."
 fi
 
+# --- Verify required tools ---
+if ! command -v jq >/dev/null 2>&1; then
+  die "jq is required but not found. Install with your package manager."
+fi
+
+# --- Run pre-flight checks ---
+info "Running release checks"
+make release-check
+
 # --- Update Nix flake ---
 info "Updating Nix flake"
 if [[ "${DRY_RUN}" == "true" || "${DRY_RUN}" == "1" ]]; then
@@ -75,11 +84,7 @@ else
   NIX_RC=0
   scripts/update-nix-flake.sh "${VERSION}" || NIX_RC=$?
   if [[ "$NIX_RC" -eq 0 ]]; then
-    git add nix/package.nix
-    git commit -m "Update nix flake for v${VERSION}"
-    git push origin main --quiet
-    LOCAL=$(git rev-parse HEAD)
-    info "Pushed nix flake update"
+    : # nix flake updated
   elif [[ "$NIX_RC" -eq 2 ]]; then
     echo "  nix flake: no changes needed"
   else
@@ -87,9 +92,40 @@ else
   fi
 fi
 
-# --- Run pre-flight checks ---
-info "Running release checks"
-make release-check
+# --- Stamp plugin version ---
+info "Stamping plugin version"
+if [[ "${DRY_RUN}" == "true" || "${DRY_RUN}" == "1" ]]; then
+  echo "  (skipped — dry run)"
+else
+  scripts/stamp-plugin-version.sh "${VERSION}"
+fi
+
+# --- Commit release prep ---
+if [[ "${DRY_RUN}" != "true" && "${DRY_RUN}" != "1" ]]; then
+  git add nix/package.nix .claude-plugin/plugin.json
+  if ! git diff --cached --quiet; then
+    STAGED=$(git diff --cached --name-only)
+    HAS_NIX=false
+    HAS_PLUGIN=false
+    if echo "${STAGED}" | grep -q "^nix/package\.nix$"; then
+      HAS_NIX=true
+    fi
+    if echo "${STAGED}" | grep -q "^\.claude-plugin/plugin\.json$"; then
+      HAS_PLUGIN=true
+    fi
+    if [[ "${HAS_NIX}" == "true" && "${HAS_PLUGIN}" == "true" ]]; then
+      COMMIT_MSG="Update nix flake and plugin version for v${VERSION}"
+    elif [[ "${HAS_NIX}" == "true" ]]; then
+      COMMIT_MSG="Update nix flake for v${VERSION}"
+    else
+      COMMIT_MSG="Update plugin version for v${VERSION}"
+    fi
+    git commit -m "${COMMIT_MSG}"
+    git push origin main --quiet
+    LOCAL=$(git rev-parse HEAD)
+    info "Pushed release prep"
+  fi
+fi
 
 # --- Fetch tags to ensure we see remote state ---
 git fetch origin --tags --quiet
