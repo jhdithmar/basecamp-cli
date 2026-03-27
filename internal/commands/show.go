@@ -18,6 +18,7 @@ import (
 // NewShowCmd creates the show command for viewing any recording.
 func NewShowCmd() *cobra.Command {
 	var recordType string
+	var cf *commentFlags
 	var dlDir *string
 
 	cmd := &cobra.Command{
@@ -242,10 +243,14 @@ You can also pass a Basecamp URL directly:
 						refetchDec.UseNumber()
 						if refetchDec.Decode(&richer) == nil {
 							data = richer
-							resp = refetchResp
 						}
 					}
 				}
+			}
+
+			enrichment := fetchRecordingComments(cmd.Context(), app, id, data, cf)
+			if enrichment.Comments != nil {
+				data["comments"] = enrichment.Comments
 			}
 
 			// Extract title from various fields
@@ -266,13 +271,16 @@ You can also pass a Basecamp URL directly:
 			}
 
 			summary := fmt.Sprintf("%s #%s: %s", itemType, id, title)
-			breadcrumbs := []output.Breadcrumb{
-				{
-					Action:      "comment",
-					Cmd:         fmt.Sprintf("basecamp comment %s <text>", id),
-					Description: "Add comment",
-				},
+			if enrichment.CountLabel != "" {
+				summary += fmt.Sprintf(" (%s)", enrichment.CountLabel)
 			}
+			breadcrumbs := make([]output.Breadcrumb, 0, 1+len(enrichment.Breadcrumbs))
+			breadcrumbs = append(breadcrumbs, output.Breadcrumb{
+				Action:      "comment",
+				Cmd:         fmt.Sprintf("basecamp comment %s <text>", id),
+				Description: "Add comment",
+			})
+			breadcrumbs = append(breadcrumbs, enrichment.Breadcrumbs...)
 
 			opts := []output.ResponseOption{
 				output.WithSummary(summary),
@@ -286,7 +294,8 @@ You can also pass a Basecamp URL directly:
 			descStr, _ := data["description"].(string)
 			descAtts := downloadableAttachments(richtext.ParseAttachments(descStr))
 
-			resultData := any(resp.Data)
+			resultData := any(data)
+			attachmentNotice := ""
 			total := len(contentAtts) + len(descAtts)
 			if total > 0 {
 				allAtts := append(contentAtts, descAtts...)
@@ -306,21 +315,21 @@ You can also pass a Basecamp URL directly:
 				}
 				resultData = data
 
-				notice := fmt.Sprintf("%d attachment(s) — download: basecamp attachments download %s", total, id)
+				attachmentNotice = fmt.Sprintf("%d attachment(s) — download: basecamp attachments download %s", total, id)
 				if dl != nil && dl.Notice != "" {
-					notice += "; " + dl.Notice
+					attachmentNotice += "; " + dl.Notice
 				}
-				opts = append(opts,
-					output.WithNotice(notice),
-					output.WithBreadcrumbs(attachmentBreadcrumb(id, total)),
-				)
+				opts = append(opts, output.WithBreadcrumbs(attachmentBreadcrumb(id, total)))
 			}
+
+			opts = append(opts, enrichment.applyNotices(attachmentNotice)...)
 
 			return app.OK(resultData, opts...)
 		},
 	}
 
 	cmd.Flags().StringVarP(&recordType, "type", "t", "", "Content type (e.g. todo, message, comment, card, document, vault, chat)")
+	cf = addCommentFlags(cmd)
 	dlDir = addDownloadAttachmentsFlag(cmd)
 
 	return cmd
@@ -430,4 +439,60 @@ func isValidRecordType(t string) bool {
 	default:
 		return false
 	}
+}
+
+func recordingCommentsCount(data map[string]any) (int, bool) {
+	count, ok := data["comments_count"]
+	if !ok {
+		count, ok = data["comment_count"]
+		if !ok {
+			return 0, false
+		}
+	}
+
+	switch v := count.(type) {
+	case json.Number:
+		if n, err := v.Int64(); err == nil {
+			return int(n), true
+		}
+		if n, err := v.Float64(); err == nil {
+			return int(n), true
+		}
+	case float64:
+		return int(v), true
+	case int:
+		return v, true
+	case int64:
+		return int(v), true
+	}
+
+	return 0, false
+}
+
+func pluralizeComments(count int) string {
+	if count == 1 {
+		return "1 comment"
+	}
+	return fmt.Sprintf("%d comments", count)
+}
+
+func commentsTruncationNotice(count, total int) string {
+	if total <= 0 || count >= total {
+		return ""
+	}
+	return fmt.Sprintf("Showing %d of %d comments — use --all-comments for the full discussion", count, total)
+}
+
+func joinShowNotices(parts ...string) string {
+	filtered := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if strings.TrimSpace(part) != "" {
+			filtered = append(filtered, part)
+		}
+	}
+	return strings.Join(filtered, "; ")
+}
+
+func commentsFetchFailedNotice(count int, id string) string {
+	return fmt.Sprintf("%s available, but fetching them failed — view: basecamp comments list --all %s", pluralizeComments(count), id)
 }
