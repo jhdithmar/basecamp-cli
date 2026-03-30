@@ -162,7 +162,9 @@ func runForwardsList(cmd *cobra.Command, project, inboxID string, limit, page in
 }
 
 func newForwardsShowCmd(project *string) *cobra.Command {
-	return &cobra.Command{
+	var cf *commentFlags
+
+	cmd := &cobra.Command{
 		Use:   "show <id|url>",
 		Short: "Show a forward",
 		Long: `Display detailed information about an email forward.
@@ -219,7 +221,11 @@ You can pass either a forward ID or a Basecamp URL:
 				subject = "Forward"
 			}
 
-			return app.OK(forward,
+			enrichment := fetchCommentsForRecording(cmd.Context(), app, forwardIDStr, cf)
+			data, commentOpts := enrichment.apply(forward, "")
+
+			opts := make([]output.ResponseOption, 0, 2+len(commentOpts))
+			opts = append(opts,
 				output.WithSummary(subject),
 				output.WithBreadcrumbs(
 					output.Breadcrumb{
@@ -234,8 +240,15 @@ You can pass either a forward ID or a Basecamp URL:
 					},
 				),
 			)
+			opts = append(opts, commentOpts...)
+
+			return app.OK(data, opts...)
 		},
 	}
+
+	cf = addCommentFlags(cmd, false)
+
+	return cmd
 }
 
 func newForwardsInboxCmd(project, inboxID *string) *cobra.Command {

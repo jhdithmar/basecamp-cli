@@ -627,6 +627,8 @@ func runChatUpload(cmd *cobra.Command, app *appctx.App, chatID, project, filePat
 }
 
 func newChatLineShowCmd(project, chatID *string) *cobra.Command {
+	var cf *commentFlags
+
 	cmd := &cobra.Command{
 		Use:     "line <id|url>",
 		Aliases: []string{"show"},
@@ -697,9 +699,13 @@ You can pass either a line ID or a Basecamp line URL:
 			if line.Creator != nil {
 				creatorName = line.Creator.Name
 			}
+
+			enrichment := fetchCommentsForRecording(cmd.Context(), app, lineID, cf)
+			data, commentOpts := enrichment.apply(line, "")
 			summary := fmt.Sprintf("Line #%s by %s", lineID, creatorName)
 
-			return app.OK(line,
+			opts := make([]output.ResponseOption, 0, 4+len(commentOpts))
+			opts = append(opts,
 				output.WithSummary(summary),
 				output.WithEntity("chat_line"),
 				output.WithDisplayData(chatLineDisplayData(line)),
@@ -716,8 +722,14 @@ You can pass either a line ID or a Basecamp line URL:
 					},
 				),
 			)
+			opts = append(opts, commentOpts...)
+
+			return app.OK(data, opts...)
 		},
 	}
+
+	cf = addCommentFlags(cmd, false)
+
 	return cmd
 }
 

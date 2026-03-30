@@ -6,6 +6,8 @@ import (
 	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/basecamp/basecamp-cli/internal/output"
 )
 
 func TestWithCommentsInjectsIntoMap(t *testing.T) {
@@ -35,13 +37,28 @@ func TestWithCommentsNilIsNoOp(t *testing.T) {
 }
 
 func TestCommentFlagsShouldFetch(t *testing.T) {
-	t.Run("default", func(t *testing.T) {
+	t.Run("defaultOn true", func(t *testing.T) {
+		cf := &commentFlags{defaultOn: true}
+		assert.True(t, cf.shouldFetch())
+	})
+
+	t.Run("defaultOn false", func(t *testing.T) {
 		cf := &commentFlags{}
+		assert.False(t, cf.shouldFetch())
+	})
+
+	t.Run("comments flag", func(t *testing.T) {
+		cf := &commentFlags{comments: true}
 		assert.True(t, cf.shouldFetch())
 	})
 
 	t.Run("no-comments", func(t *testing.T) {
 		cf := &commentFlags{noComments: true}
+		assert.False(t, cf.shouldFetch())
+	})
+
+	t.Run("no-comments overrides defaultOn", func(t *testing.T) {
+		cf := &commentFlags{defaultOn: true, noComments: true}
 		assert.False(t, cf.shouldFetch())
 	})
 
@@ -74,5 +91,48 @@ func TestCommentEnrichmentApplyNotices(t *testing.T) {
 		ce := &commentEnrichment{}
 		opts := ce.applyNotices("1 attachment(s)")
 		assert.Len(t, opts, 1)
+	})
+}
+
+func TestCommentEnrichmentApply(t *testing.T) {
+	t.Run("nil comments returns data unchanged and empty opts", func(t *testing.T) {
+		ce := &commentEnrichment{}
+		data := map[string]any{"id": float64(1)}
+		result, opts := ce.apply(data, "")
+		m := result.(map[string]any)
+		_, hasComments := m["comments"]
+		assert.False(t, hasComments)
+		assert.Empty(t, opts)
+	})
+
+	t.Run("comments and notice produce data and opts", func(t *testing.T) {
+		ce := &commentEnrichment{
+			Comments: []basecamp.Comment{{ID: 1, Content: "hi"}},
+			Notice:   "Showing 1 of 5 comments",
+		}
+		data := map[string]any{"id": float64(42)}
+		result, opts := ce.apply(data, "2 attachment(s)")
+		m := result.(map[string]any)
+		assert.NotNil(t, m["comments"])
+		assert.NotEmpty(t, opts)
+	})
+
+	t.Run("breadcrumbs are appended", func(t *testing.T) {
+		ce := &commentEnrichment{
+			Comments: []basecamp.Comment{{ID: 1}},
+			Breadcrumbs: []output.Breadcrumb{
+				{Action: "comments", Cmd: "basecamp comments list --all 42", Description: "View all comments"},
+			},
+		}
+		data := map[string]any{"id": float64(42)}
+		_, opts := ce.apply(data, "")
+
+		// Apply opts to a Response to prove the breadcrumb survived composition.
+		resp := &output.Response{}
+		for _, opt := range opts {
+			opt(resp)
+		}
+		require.Len(t, resp.Breadcrumbs, 1)
+		assert.Equal(t, "basecamp comments list --all 42", resp.Breadcrumbs[0].Cmd)
 	})
 }

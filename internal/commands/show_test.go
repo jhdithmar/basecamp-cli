@@ -136,6 +136,36 @@ func TestKnownURLPathTypesAreValid(t *testing.T) {
 	}
 }
 
+func TestIsCommentableShowType(t *testing.T) {
+	t.Run("non-commentable CLI aliases", func(t *testing.T) {
+		for _, alias := range []string{"people", "boosts", "comment", "comments"} {
+			assert.False(t, isCommentableShowType(alias, nil), alias)
+		}
+	})
+
+	t.Run("commentable CLI aliases", func(t *testing.T) {
+		for _, alias := range []string{"todo", "message", "card", ""} {
+			assert.True(t, isCommentableShowType(alias, map[string]any{}), alias)
+		}
+	})
+
+	t.Run("generic lookup with non-commentable API type", func(t *testing.T) {
+		for _, apiType := range []string{"Person", "Boost", "Comment"} {
+			data := map[string]any{"type": apiType}
+			assert.False(t, isCommentableShowType("", data), apiType)
+		}
+	})
+
+	t.Run("generic lookup with commentable API type", func(t *testing.T) {
+		data := map[string]any{"type": "Todo"}
+		assert.True(t, isCommentableShowType("", data))
+	})
+
+	t.Run("generic lookup with no type in data defaults commentable", func(t *testing.T) {
+		assert.True(t, isCommentableShowType("", map[string]any{}))
+	})
+}
+
 // --- Test helpers ---
 
 // showTestTokenProvider is a mock token provider for show tests.
@@ -182,9 +212,10 @@ func showTestAppWithOutput(t *testing.T, transport http.RoundTripper, format out
 // By default it returns a generic success response. Set the responder field to
 // customize per-request response bodies.
 type showTrackingTransport struct {
-	mu        sync.Mutex
-	requests  []string
-	responder func(path string) (int, string) // optional: (statusCode, body)
+	mu                   sync.Mutex
+	requests             []string
+	responder            func(path string) (int, string) // optional: (statusCode, body)
+	responderWithHeaders func(path string) (int, string, http.Header)
 }
 
 func (t *showTrackingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -197,7 +228,15 @@ func (t *showTrackingTransport) RoundTrip(req *http.Request) (*http.Response, er
 
 	status := 200
 	body := `{"id": 789, "type": "Item", "title": "Test item"}`
-	if t.responder != nil {
+	if t.responderWithHeaders != nil {
+		var extra http.Header
+		status, body, extra = t.responderWithHeaders(req.URL.Path)
+		for k, vals := range extra {
+			for _, v := range vals {
+				header.Add(k, v)
+			}
+		}
+	} else if t.responder != nil {
 		status, body = t.responder(req.URL.Path)
 	}
 
@@ -312,9 +351,10 @@ func TestShowGenericRecordingRefetchesTypeEndpoint(t *testing.T) {
 	require.NoError(t, err)
 
 	reqs := transport.getRequests()
-	require.Len(t, reqs, 2, "expected 2 requests: /recordings/ then /todos/")
+	require.Len(t, reqs, 3, "expected 3 requests: /recordings/, /todos/, /comments/")
 	assert.Contains(t, reqs[0], "/recordings/42.json")
 	assert.Contains(t, reqs[1], "/todos/42.json")
+	assert.Contains(t, reqs[2], "/recordings/42/comments.json")
 	assert.Contains(t, buf.String(), "Full todo content")
 }
 
@@ -381,11 +421,14 @@ func TestShowIncludesCommentsWhenPresent(t *testing.T) {
 	assert.Equal(t, []int{9001, 9002}, []int{decodedComments[0].ID, decodedComments[1].ID})
 }
 
-func TestShowNoCommentsWhenCountZero(t *testing.T) {
+func TestShowFetchesCommentsEvenWhenCountZero(t *testing.T) {
 	transport := &showTrackingTransport{
 		responder: func(path string) (int, string) {
 			if strings.Contains(path, "/todos/42.json") {
 				return 200, `{"id": 42, "type": "Todo", "title": "Buy milk", "comments_count": 0}`
+			}
+			if strings.Contains(path, "/recordings/42/comments.json") {
+				return 200, `[]`
 			}
 			return 200, `{}`
 		},
@@ -393,8 +436,9 @@ func TestShowNoCommentsWhenCountZero(t *testing.T) {
 
 	reqs, _, _, err := runShowCmdCapture(t, transport, output.FormatJSON, "todo", "42")
 	require.NoError(t, err)
-	require.Len(t, reqs, 1)
+	require.Len(t, reqs, 2, "always fetches comments even with count 0")
 	assert.Contains(t, reqs[0], "/todos/42.json")
+	assert.Contains(t, reqs[1], "/recordings/42/comments.json")
 }
 
 func TestShowNoCommentsFlag(t *testing.T) {
@@ -422,14 +466,16 @@ func TestShowNoCommentsFlag(t *testing.T) {
 
 func TestShowCommentsDefaultLimitAddsNotice(t *testing.T) {
 	transport := &showTrackingTransport{
-		responder: func(path string) (int, string) {
+		responderWithHeaders: func(path string) (int, string, http.Header) {
 			switch {
 			case strings.Contains(path, "/todos/42.json"):
-				return 200, `{"id": 42, "type": "Todo", "title": "Buy milk", "comments_count": 150}`
+				return 200, `{"id": 42, "type": "Todo", "title": "Buy milk", "comments_count": 150}`, nil
 			case strings.Contains(path, "/recordings/42/comments.json"):
-				return 200, showCommentsJSON(100)
+				h := http.Header{}
+				h.Set("X-Total-Count", "150")
+				return 200, showCommentsJSON(100), h
 			default:
-				return 200, `{}`
+				return 200, `{}`, nil
 			}
 		},
 	}
@@ -551,7 +597,7 @@ func TestShowCommentsDiagnosticPreservesAttachmentNotice(t *testing.T) {
 	assert.Contains(t, stderr, "1 attachment(s) — download: basecamp attachments download 42")
 }
 
-func TestShowCommentsMissingField(t *testing.T) {
+func TestShowSkipsCommentsForNonCommentableTypes(t *testing.T) {
 	transport := &showTrackingTransport{
 		responder: func(path string) (int, string) {
 			if strings.Contains(path, "/people/42.json") {
@@ -563,7 +609,7 @@ func TestShowCommentsMissingField(t *testing.T) {
 
 	reqs, _, _, err := runShowCmdCapture(t, transport, output.FormatJSON, "people", "42")
 	require.NoError(t, err)
-	require.Len(t, reqs, 1)
+	require.Len(t, reqs, 1, "non-commentable types skip comment fetch")
 	assert.Contains(t, reqs[0], "/people/42.json")
 }
 
@@ -966,9 +1012,10 @@ func TestShowLineRefetchesViaParent(t *testing.T) {
 	require.NoError(t, err)
 
 	reqs := transport.getRequests()
-	require.Len(t, reqs, 2, "expected 2 requests: /recordings/ then /chats/{parentId}/lines/")
+	require.Len(t, reqs, 3, "expected 3 requests: /recordings/, /chats/{parentId}/lines/, /comments/")
 	assert.Contains(t, reqs[0], "/recordings/111.json")
 	assert.Contains(t, reqs[1], "/chats/789/lines/111.json")
+	assert.Contains(t, reqs[2], "/recordings/111/comments.json")
 	assert.Contains(t, buf.String(), "Rich line content with extras")
 }
 
@@ -999,9 +1046,10 @@ func TestShowReplyRefetchesViaParent(t *testing.T) {
 	require.NoError(t, err)
 
 	reqs := transport.getRequests()
-	require.Len(t, reqs, 2, "expected 2 requests: /recordings/ then /inbox_forwards/{parentId}/replies/")
+	require.Len(t, reqs, 3, "expected 3 requests: /recordings/, /inbox_forwards/{parentId}/replies/, /comments/")
 	assert.Contains(t, reqs[0], "/recordings/400.json")
 	assert.Contains(t, reqs[1], "/inbox_forwards/380/replies/400.json")
+	assert.Contains(t, reqs[2], "/recordings/400/comments.json")
 	assert.Contains(t, buf.String(), "Rich reply content")
 }
 

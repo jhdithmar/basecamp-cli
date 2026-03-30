@@ -179,6 +179,8 @@ func runTodolistsList(cmd *cobra.Command, project, todosetFlag string, limit, pa
 }
 
 func newTodolistsShowCmd(project *string) *cobra.Command {
+	var cf *commentFlags
+
 	cmd := &cobra.Command{
 		Use:   "show <id|url>",
 		Short: "Show todolist details",
@@ -230,7 +232,11 @@ You can pass either a todolist ID or a Basecamp URL:
 				return convertSDKError(err)
 			}
 
-			return app.OK(todolist,
+			enrichment := fetchCommentsForRecording(cmd.Context(), app, todolistIDStr, cf)
+			data, commentOpts := enrichment.apply(todolist, "")
+
+			opts := make([]output.ResponseOption, 0, 3+len(commentOpts))
+			opts = append(opts,
 				output.WithEntity("todolist"),
 				output.WithSummary(fmt.Sprintf("Todolist: %s", todolist.Name)),
 				output.WithBreadcrumbs(
@@ -246,8 +252,14 @@ You can pass either a todolist ID or a Basecamp URL:
 					},
 				),
 			)
+			opts = append(opts, commentOpts...)
+
+			return app.OK(data, opts...)
 		},
 	}
+
+	cf = addCommentFlags(cmd, false)
+
 	return cmd
 }
 

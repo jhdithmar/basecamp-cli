@@ -15,26 +15,33 @@ import (
 	"github.com/basecamp/basecamp-cli/internal/output"
 )
 
-// commentFlags holds the parsed state of --no-comments / --all-comments.
+// commentFlags holds the parsed state of --comments / --no-comments / --all-comments.
 type commentFlags struct {
+	defaultOn   bool
+	comments    bool
 	noComments  bool
 	allComments bool
 }
 
 // shouldFetch returns true when the caller should attempt comment fetching.
 func (cf *commentFlags) shouldFetch() bool {
-	return !cf.noComments
+	if cf.noComments {
+		return false
+	}
+	return cf.defaultOn || cf.comments || cf.allComments
 }
 
-// addCommentFlags registers --no-comments and --all-comments on cmd and
-// returns the parsed flag holder. Follows the addDownloadAttachmentsFlag
-// pattern.
-func addCommentFlags(cmd *cobra.Command) *commentFlags {
-	cf := &commentFlags{}
+// addCommentFlags registers --comments, --no-comments, and --all-comments on
+// cmd and returns the parsed flag holder. When defaultOn is true (e.g.
+// basecamp show), comments are fetched by default; when false (typed show
+// commands), --comments or --all-comments must be passed to opt in.
+func addCommentFlags(cmd *cobra.Command, defaultOn bool) *commentFlags {
+	cf := &commentFlags{defaultOn: defaultOn}
+	cmd.Flags().BoolVar(&cf.comments, "comments", false, "Include comments in output")
 	cmd.Flags().BoolVar(&cf.noComments, "no-comments", false, "Skip comment fetching")
 	cmd.Flags().BoolVar(&cf.allComments, "all-comments", false,
 		fmt.Sprintf("Fetch all comments instead of the default %d", basecamp.DefaultCommentLimit))
-	cmd.MarkFlagsMutuallyExclusive("no-comments", "all-comments")
+	cmd.MarkFlagsMutuallyExclusive("comments", "no-comments", "all-comments")
 	return cf
 }
 
@@ -58,30 +65,18 @@ type commentEnrichment struct {
 	CountLabel string
 }
 
-// fetchRecordingComments fetches comments for a recording and returns an
-// enrichment bundle. Handles the full lifecycle: skip check, fetch with
-// limit, truncation notice, failure notice, and breadcrumb generation.
-func fetchRecordingComments(
+// fetchCommentsForRecording fetches comments for a recording. Does not require
+// a data map — derives count from the API response metadata. Use this from
+// typed show commands that have a struct, not a map.
+func fetchCommentsForRecording(
 	ctx context.Context,
 	app *appctx.App,
 	id string,
-	data map[string]any,
 	cf *commentFlags,
 ) *commentEnrichment {
-	commentsCount, hasCommentsCount := recordingCommentsCount(data)
-
 	result := &commentEnrichment{}
 
-	if hasCommentsCount && commentsCount > 0 {
-		result.CountLabel = pluralizeComments(commentsCount)
-		result.Breadcrumbs = append(result.Breadcrumbs, output.Breadcrumb{
-			Action:      "comments",
-			Cmd:         fmt.Sprintf("basecamp comments list --all %s", id),
-			Description: "View all comments",
-		})
-	}
-
-	if !cf.shouldFetch() || !hasCommentsCount || commentsCount <= 0 {
+	if !cf.shouldFetch() {
 		return result
 	}
 
@@ -101,26 +96,76 @@ func fetchRecordingComments(
 		ctx, recordingID, commentOpts,
 	)
 	if commentsErr != nil {
-		result.FetchNotice = commentsFetchFailedNotice(commentsCount, id)
+		result.FetchNotice = fmt.Sprintf(
+			"Comment fetching failed — view: basecamp comments list --all %s", id)
 		return result
 	}
 
 	result.Comments = commentsResult.Comments
+	totalCount := commentsResult.Meta.TotalCount
+
+	if totalCount > 0 {
+		result.CountLabel = pluralizeComments(totalCount)
+		result.Breadcrumbs = append(result.Breadcrumbs, output.Breadcrumb{
+			Action:      "comments",
+			Cmd:         fmt.Sprintf("basecamp comments list --all %s", id),
+			Description: "View all comments",
+		})
+	}
 
 	if !cf.allComments {
-		totalComments := commentsCount
-		if commentsResult.Meta.TotalCount > totalComments {
-			totalComments = commentsResult.Meta.TotalCount
-		}
-		notice := commentsTruncationNotice(len(commentsResult.Comments), totalComments)
-		result.Notice = notice
-		if notice != "" {
-			result.Breadcrumbs = append(result.Breadcrumbs, output.Breadcrumb{
-				Action:      "all-comments",
-				Cmd:         fmt.Sprintf("basecamp show --all-comments %s", id),
-				Description: "Fetch all comments",
-			})
-		}
+		result.Notice = commentsTruncationNotice(len(commentsResult.Comments), totalCount)
+	}
+
+	return result
+}
+
+// fetchRecordingComments wraps fetchCommentsForRecording and additionally
+// reads comments_count from the data map. This provides a CountLabel even
+// when --no-comments skips the fetch (the parent object carries the count).
+func fetchRecordingComments(
+	ctx context.Context,
+	app *appctx.App,
+	id string,
+	data map[string]any,
+	cf *commentFlags,
+) *commentEnrichment {
+	result := fetchCommentsForRecording(ctx, app, id, cf)
+
+	commentsCount, hasCommentsCount := recordingCommentsCount(data)
+
+	// When CountLabel wasn't derived from the fetch (e.g. skipped, or
+	// Meta.TotalCount missing from response), fall back to the parent's
+	// comments_count field.
+	if result.CountLabel == "" && hasCommentsCount && commentsCount > 0 {
+		result.CountLabel = pluralizeComments(commentsCount)
+		result.Breadcrumbs = append(result.Breadcrumbs, output.Breadcrumb{
+			Action:      "comments",
+			Cmd:         fmt.Sprintf("basecamp comments list --all %s", id),
+			Description: "View all comments",
+		})
+	}
+
+	// When TotalCount was missing from the API response but the parent's
+	// comments_count indicates truncation, recompute the notice so the user
+	// sees a warning and the --all-comments breadcrumb is appended below.
+	if result.Notice == "" && !cf.allComments && hasCommentsCount && commentsCount > 0 &&
+		len(result.Comments) > 0 && len(result.Comments) < commentsCount {
+		result.Notice = commentsTruncationNotice(len(result.Comments), commentsCount)
+	}
+
+	// When fetch failed, enhance error with count from parent.
+	if result.FetchNotice != "" && hasCommentsCount && commentsCount > 0 {
+		result.FetchNotice = commentsFetchFailedNotice(commentsCount, id)
+	}
+
+	// Add the all-comments breadcrumb specific to `basecamp show`.
+	if result.Notice != "" {
+		result.Breadcrumbs = append(result.Breadcrumbs, output.Breadcrumb{
+			Action:      "all-comments",
+			Cmd:         fmt.Sprintf("basecamp show --all-comments %s", id),
+			Description: "Fetch all comments",
+		})
 	}
 
 	return result
@@ -153,6 +198,18 @@ func withComments(data any, comments []basecamp.Comment) any {
 	}
 	m["comments"] = comments
 	return m
+}
+
+// apply merges comments into data and returns the enriched data plus response
+// options (notices + breadcrumbs). Every typed show command calls this instead
+// of inlining the withComments / applyNotices / breadcrumbs sequence.
+func (ce *commentEnrichment) apply(data any, attachmentNotice string) (any, []output.ResponseOption) {
+	data = withComments(data, ce.Comments)
+	opts := ce.applyNotices(attachmentNotice)
+	if len(ce.Breadcrumbs) > 0 {
+		opts = append(opts, output.WithBreadcrumbs(ce.Breadcrumbs...))
+	}
+	return data, opts
 }
 
 // applyNotices merges comment and attachment notices into response options.
